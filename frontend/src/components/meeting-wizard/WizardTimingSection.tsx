@@ -177,18 +177,63 @@ export function WizardTimingSection() {
     setDragMode('add');
   };
 
-  // Serialize selected slots into a format suitable for form data
+  // Serialize selected slots into compact ranges suitable for form data.
   const proposedBlocks = useMemo(() => {
-    const blocks: { day: string; time: string }[] = [];
+    const slotsByDay = new Map<string, number[]>();
     selectedSlots.forEach((key) => {
       const [day, timeIndexStr] = key.split('-');
       const timeIndex = parseInt(timeIndexStr, 10);
-      blocks.push({
-        day: day.toUpperCase(),
-        time: timeLabels[timeIndex],
-      });
+      if (Number.isNaN(timeIndex)) return;
+      const dayUpper = day.toUpperCase();
+      const existing = slotsByDay.get(dayUpper) || [];
+      existing.push(timeIndex);
+      slotsByDay.set(dayUpper, existing);
     });
-    return blocks;
+
+    const dayOrder: Record<string, number> = {
+      MON: 0,
+      TUE: 1,
+      WED: 2,
+      THU: 3,
+      FRI: 4,
+      SAT: 5,
+      SUN: 6,
+    };
+
+    const ranges: Array<{ day: string; start_time: string; end_time: string }> = [];
+    Array.from(slotsByDay.entries())
+      .sort((a, b) => (dayOrder[a[0]] ?? 999) - (dayOrder[b[0]] ?? 999))
+      .forEach(([day, indices]) => {
+        const ordered = Array.from(new Set(indices)).sort((a, b) => a - b);
+        if (ordered.length === 0) return;
+
+        let start = ordered[0];
+        let prev = ordered[0];
+
+        for (let i = 1; i < ordered.length; i++) {
+          const current = ordered[i];
+          if (current === prev + 1) {
+            prev = current;
+            continue;
+          }
+
+          ranges.push({
+            day,
+            start_time: timeLabels[start],
+            end_time: timeLabels[Math.min(prev + 1, timeLabels.length - 1)],
+          });
+          start = current;
+          prev = current;
+        }
+
+        ranges.push({
+          day,
+          start_time: timeLabels[start],
+          end_time: timeLabels[Math.min(prev + 1, timeLabels.length - 1)],
+        });
+      });
+
+    return ranges;
   }, [selectedSlots]);
 
   // Hidden input to pass data to form

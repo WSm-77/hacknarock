@@ -1,7 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
+from ..database.session import get_db
 from .models import (
     CreateMeetingRequestDTO,
     CreateMeetingResponseDTO,
@@ -10,6 +12,7 @@ from .models import (
     VoteRequestDTO,
     VoteResponseDTO,
 )
+from .repositories.database_repository import IntegrationDatabaseRepository
 from .service import integration_service
 
 router = APIRouter(prefix="/api", tags=["Integration"])
@@ -26,14 +29,14 @@ def get_dashboard() -> DashboardResponseDTO:
     response_model=CreateMeetingResponseDTO,
     status_code=status.HTTP_201_CREATED,
 )
-def create_meeting(payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO:
-    """Tworzy spotkanie oraz powiązaną ankietę głosowania."""
+def create_meeting(payload: CreateMeetingRequestDTO, db: Session = Depends(get_db)) -> CreateMeetingResponseDTO:
+    """Tworzy spotkanie i zapisuje je w bazie danych."""
     try:
-        return integration_service.create_meeting(payload)
-    except OverflowError as exc:
+        return IntegrationDatabaseRepository(db).create_meeting(payload)
+    except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Integration store capacity reached",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
         ) from exc
 
 
