@@ -85,3 +85,12 @@ Example:
 ```bash
 VITE_API_BASE_URL=http://localhost:8000
 ```
+
+## Auth UI Behavior
+
+- `/login` and `/logging` both render the same `Logging` page.
+- The page supports two modes: `login` and `register`.
+- Register mode submits `name`, `surname`, `email`, `password` to `POST /auth/register`.
+- Login mode submits `email`, `password` to `POST /auth/login`.
+- Duplicate email (`400`) is shown as a field-level email error.
+- Invalid or missing fields are blocked by frontend checks and backend validation.
