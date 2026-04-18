@@ -13,7 +13,7 @@ from google.genai import types
 try:
 	from .user import User
 except ImportError:
-	from user import User
+	from backend.src.grounding_service.user import User
 
 
 class GroundingService:

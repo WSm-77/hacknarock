@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 
 # Zakładamy, że zaimportujemy wszystko z naszego pliku ze schematami
-from domain import (
+from backend.src.meetings.domain import (
     MeetingDraft,
     MeetingGatheringAvailability,
     MeetingVotingClosed,
@@ -13,7 +13,7 @@ from domain import (
     MeetingState,
 )
 
-from common import TimeBlock, ParticipantAvailability, MeetingDetails, ProposedBlock
+from backend.src.meetings.common import TimeBlock, ParticipantAvailability, MeetingDetails, ProposedBlock
 
 
 class MeetingService:

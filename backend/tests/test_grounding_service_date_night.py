@@ -4,8 +4,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from grounding_service.grounding_service import GroundingService
-from grounding_service.user import User
+from backend.src.grounding_service.grounding_service import GroundingService
+from backend.src.grounding_service.user import User
 
 
 def test_evening_date_for_two_people():

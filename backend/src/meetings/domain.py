@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Dict, Optional, Union, Literal, Any
 from pydantic import BaseModel, Field, EmailStr, model_validator
 
-from meetings.common import ProposedBlock, ParticipantAvailability, MeetingDetails, TimeBlock
+from backend.src.meetings.common import ProposedBlock, ParticipantAvailability, MeetingDetails, TimeBlock
 
 
 # ==========================================

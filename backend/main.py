@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from auth.router import router as auth_router
+from backend.src.auth.router import router as auth_router
 from db import Base, engine
-from meetings.router import router as meetings_router
+from backend.src.meetings.router import router as meetings_router
 
 app = FastAPI(
     title="HackNaRock API",
