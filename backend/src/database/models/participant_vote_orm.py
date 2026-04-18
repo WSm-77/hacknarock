@@ -14,4 +14,3 @@ class ParticipantVoteORM(Base):
     meeting_id: Mapped[str] = mapped_column(String(36), ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     participant_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     available_blocks: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
-    maybe_blocks: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
