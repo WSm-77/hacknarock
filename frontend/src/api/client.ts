@@ -59,16 +59,21 @@ export async function apiFetch<TResponse>(
   init?: RequestInit,
 ): Promise<TResponse> {
   const accessToken = getAccessToken();
-  const authorizationHeader = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
+  if (init?.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
 
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...authorizationHeader,
-      ...init?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
