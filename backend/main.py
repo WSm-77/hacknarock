@@ -1,11 +1,34 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from auth.router import router as auth_router
+from db import Base, engine
+from meetings.router import router as meetings_router
+
 app = FastAPI(
     title="HackNaRock API",
     description="Backend API for HackNaRock",
-    version="0.1.0"
+    version="0.1.0",
+    openapi_tags=[
+        {
+            "name": "Authentication",
+            "description": "Rejestracja i logowanie użytkowników.",
+        },
+        {
+            "name": "Meetings",
+            "description": "Operacje związane ze spotkaniami.",
+        },
+    ],
 )
+
+app.include_router(auth_router)
+app.include_router(meetings_router)
+
+
+@app.on_event("startup")
+def create_tables() -> None:
+    """Tworzy brakujące tabele przy starcie aplikacji."""
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")

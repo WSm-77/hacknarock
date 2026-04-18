@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17
-    container_name: postgres-local
+    container_name: postgres-local-hacknarock
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hacknarock_testdb}
       POSTGRES_USER: ${POSTGRES_USER:-hacknarock_test_user}
