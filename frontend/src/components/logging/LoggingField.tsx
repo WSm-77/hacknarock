@@ -3,12 +3,12 @@ interface LoggingFieldProps {
   label: string;
   name: string;
   placeholder: string;
-  type: 'email' | 'password';
+  type: 'text' | 'email' | 'password';
   autoComplete: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-  hasError?: boolean;
+  errorMessage?: string;
 }
 
 export function LoggingField({
@@ -21,8 +21,10 @@ export function LoggingField({
   value,
   onChange,
   disabled = false,
-  hasError = false,
+  errorMessage,
 }: LoggingFieldProps) {
+  const hasError = Boolean(errorMessage);
+
   return (
     <div className={`logging-field${hasError ? ' logging-field--error' : ''}`}>
       <label htmlFor={id}>{label}</label>
@@ -37,6 +39,9 @@ export function LoggingField({
         disabled={disabled}
         required
       />
+      <p className="logging-field-error" role="status" aria-live="polite">
+        {errorMessage ?? ''}
+      </p>
     </div>
   );
 }

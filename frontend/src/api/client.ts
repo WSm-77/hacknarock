@@ -1,4 +1,5 @@
 const DEFAULT_LOCAL_API_BASE_URL = 'http://localhost:8000';
+const AUTH_SESSION_STORAGE_KEY = 'snapslot.auth.session';
 
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '');
@@ -34,6 +35,24 @@ export class ApiError extends Error {
   }
 }
 
+function getStoredAccessToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const rawSession = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+  if (!rawSession) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawSession) as { accessToken?: unknown };
+    return typeof parsed.accessToken === 'string' ? parsed.accessToken : null;
+  } catch {
+    return null;
+  }
+}
+
 async function parseErrorDetail(response: Response): Promise<string> {
   const fallback = `Request failed with status ${response.status}`;
 
@@ -56,16 +75,23 @@ export async function apiFetch<TResponse>(
   path: string,
   init?: RequestInit,
 ): Promise<TResponse> {
+  const accessToken = getStoredAccessToken();
+
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+    }
+
     throw new ApiError(response.status, await parseErrorDetail(response));
   }
 

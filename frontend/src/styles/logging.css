@@ -143,6 +143,37 @@
   line-height: 1.7;
 }
 
+.logging-switch {
+  margin-bottom: 1.1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid rgba(201, 100, 66, 0.22);
+  border-radius: 0.95rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.logging-switch__option {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: transparent;
+  color: #6f605b;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.logging-switch__option--active {
+  background: rgba(201, 100, 66, 0.14);
+  color: #a95234;
+}
+
+.logging-switch__option:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .logging-form {
   display: grid;
   gap: 1.25rem;
@@ -186,6 +217,13 @@
 .logging-field--error input {
   border-color: rgba(190, 69, 50, 0.7);
   background: #fff6f3;
+}
+
+.logging-field-error {
+  min-height: 1.05rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #a53f2a;
 }
 
 .logging-error {

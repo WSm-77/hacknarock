@@ -10,10 +10,25 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RegisterPayload {
+  name: string;
+  surname: string;
+  email: string;
+  password: string;
+}
+
 export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: AuthUser;
+}
+
+export interface RegisterResponse {
+  id?: string;
+  email?: string;
+  access_token?: string;
+  token_type?: string;
+  user?: AuthUser;
 }
 
 export interface StoredAuthSession {
@@ -26,6 +41,13 @@ const AUTH_SESSION_STORAGE_KEY = 'snapslot.auth.session';
 
 export function login(payload: LoginPayload): Promise<LoginResponse> {
   return apiFetch<LoginResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function register(payload: RegisterPayload): Promise<RegisterResponse> {
+  return apiFetch<RegisterResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
