@@ -5,6 +5,78 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Inter:wght@100..900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'surface-container-lowest': '#ffffff',
+              'inverse-on-surface': '#f2f1ea',
+              error: '#ba1a1a',
+              'surface-tint': '#9d4324',
+              background: '#fbf9f2',
+              'surface-variant': '#e3e3dc',
+              'on-tertiary': '#ffffff',
+              'on-surface': '#1b1c18',
+              'on-error': '#ffffff',
+              'primary-fixed': '#ffdbd0',
+              'primary-container': '#b95837',
+              'on-secondary-fixed': '#1c1c13',
+              'on-tertiary-container': '#f7fff2',
+              'on-tertiary-fixed': '#121f12',
+              outline: '#89726b',
+              'on-secondary-container': '#636357',
+              'surface-container': '#efeee7',
+              'tertiary-fixed': '#d7e7d3',
+              'surface-container-low': '#f5f4ed',
+              'surface-container-highest': '#e3e3dc',
+              'secondary-fixed-dim': '#c8c7b8',
+              'on-error-container': '#93000a',
+              'on-secondary-fixed-variant': '#47473c',
+              primary: '#9a4021',
+              'on-secondary': '#ffffff',
+              tertiary: '#516050',
+              secondary: '#5f5f53',
+              'outline-variant': '#dcc1b8',
+              'error-container': '#ffdad6',
+              'on-primary-fixed-variant': '#7e2c0e',
+              'inverse-surface': '#30312c',
+              'primary-fixed-dim': '#ffb59d',
+              'on-tertiary-fixed-variant': '#3c4a3b',
+              'surface-bright': '#fbf9f2',
+              'surface-container-high': '#e9e8e1',
+              surface: '#fbf9f2',
+              'on-primary': '#ffffff',
+              'surface-dim': '#dbdad3',
+              'secondary-fixed': '#e5e3d4',
+              'on-primary-fixed': '#390b00',
+              'secondary-container': '#e2e0d1',
+              'on-surface-variant': '#56423c',
+              'on-background': '#1b1c18',
+              'tertiary-container': '#6a7968',
+              'on-primary-container': '#fffbff',
+              'tertiary-fixed-dim': '#bbcbb7',
+              'inverse-primary': '#ffb59d'
+            },
+            borderRadius: {
+              DEFAULT: '0.25rem',
+              lg: '0.5rem',
+              xl: '0.75rem',
+              full: '9999px'
+            },
+            fontFamily: {
+              headline: ['Newsreader', 'serif'],
+              body: ['Inter', 'sans-serif'],
+              label: ['Inter', 'sans-serif']
+            }
+          }
+        }
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
