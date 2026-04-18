@@ -14,8 +14,24 @@ interface AvailabilityRow {
   kind: AvailabilityKind;
 }
 
+function generateRowId(): string {
+  const webCrypto = globalThis.crypto;
+
+  if (webCrypto?.randomUUID) {
+    return webCrypto.randomUUID();
+  }
+
+  if (webCrypto) {
+    const values = new Uint32Array(2);
+    webCrypto.getRandomValues(values);
+    return `row-${values[0].toString(16)}${values[1].toString(16)}`;
+  }
+
+  return `row-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 const EMPTY_ROW = (): AvailabilityRow => ({
-  id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  id: generateRowId(),
   startTime: '',
   endTime: '',
   kind: 'available',
@@ -29,35 +45,41 @@ function toApiDate(value: string): string {
   return new Date(value).toISOString();
 }
 
+function isOpenForSubmission(status: 'collecting_availability' | 'ready_for_ai' | 'ai_recommended'): boolean {
+  return status === 'collecting_availability';
+}
+
+function loadDraftRows(publicToken?: string): AvailabilityRow[] {
+  if (!publicToken) {
+    return [EMPTY_ROW()];
+  }
+
+  const raw = localStorage.getItem(toDraftStorageKey(publicToken));
+  if (!raw) {
+    return [EMPTY_ROW()];
+  }
+
+  try {
+    const draft = JSON.parse(raw) as AvailabilityRow[];
+    if (Array.isArray(draft) && draft.length > 0) {
+      return draft;
+    }
+  } catch {
+    localStorage.removeItem(toDraftStorageKey(publicToken));
+  }
+
+  return [EMPTY_ROW()];
+}
+
 export function ParticipantAvailabilityPage() {
   const navigate = useNavigate();
   const { publicToken } = useParams<{ publicToken: string }>();
-  const [rows, setRows] = useState<AvailabilityRow[]>([EMPTY_ROW()]);
+  const [rows, setRows] = useState<AvailabilityRow[]>(() => loadDraftRows(publicToken));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const userEmail = getAuthenticatedUserEmail();
-
-  useEffect(() => {
-    if (!publicToken) {
-      return;
-    }
-
-    const raw = localStorage.getItem(toDraftStorageKey(publicToken));
-    if (!raw) {
-      return;
-    }
-
-    try {
-      const draft = JSON.parse(raw) as AvailabilityRow[];
-      if (Array.isArray(draft) && draft.length > 0) {
-        setRows(draft);
-      }
-    } catch {
-      localStorage.removeItem(toDraftStorageKey(publicToken));
-    }
-  }, [publicToken]);
 
   useEffect(() => {
     if (!publicToken) {
@@ -91,9 +113,16 @@ export function ParticipantAvailabilityPage() {
       return;
     }
 
-    const invalidRange = rows.some((row) => row.startTime >= row.endTime);
+    const invalidRange = rows.some((row) => {
+      if (!row.startTime || !row.endTime) {
+        return true;
+      }
+      const start = new Date(row.startTime);
+      const end = new Date(row.endTime);
+      return Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end;
+    });
     if (invalidRange) {
-      setErrorMessage('Start time must be earlier than end time.');
+      setErrorMessage('Provide valid start/end dates and ensure start is earlier than end.');
       return;
     }
 
@@ -117,11 +146,16 @@ export function ParticipantAvailabilityPage() {
         },
       });
 
-      if (response.status !== 'collecting_availability') {
+      const isOpen = isOpenForSubmission(response.status);
+      if (!isOpen) {
         setIsClosed(true);
       }
 
-      setSuccessMessage('Availability saved. You can edit and save again until collection closes.');
+      setSuccessMessage(
+        isOpen
+          ? 'Availability saved. You can edit and save again until collection closes.'
+          : 'Availability was saved, but collection is now closed for this meeting.',
+      );
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
