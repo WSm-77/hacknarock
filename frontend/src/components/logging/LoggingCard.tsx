@@ -3,9 +3,23 @@ import { LoggingAccessForm } from './LoggingAccessForm';
 
 interface LoggingCardProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  email: string;
+  password: string;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  isSubmitting: boolean;
+  errorMessage: string | null;
 }
 
-export function LoggingCard({ onSubmit }: LoggingCardProps) {
+export function LoggingCard({
+  onSubmit,
+  email,
+  password,
+  onEmailChange,
+  onPasswordChange,
+  isSubmitting,
+  errorMessage,
+}: LoggingCardProps) {
   return (
     <section className="logging-card" aria-labelledby="study-entry-title">
       <div className="logging-illustration" aria-hidden="true">
@@ -20,7 +34,15 @@ export function LoggingCard({ onSubmit }: LoggingCardProps) {
         <p>Access your curated archives and temporal ledger.</p>
       </div>
 
-      <LoggingAccessForm onSubmit={onSubmit} />
+      <LoggingAccessForm
+        onSubmit={onSubmit}
+        email={email}
+        password={password}
+        onEmailChange={onEmailChange}
+        onPasswordChange={onPasswordChange}
+        isSubmitting={isSubmitting}
+        errorMessage={errorMessage}
+      />
 
       <div className="logging-links">
         <a className="logging-footnote" href="#">
