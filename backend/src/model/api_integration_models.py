@@ -25,6 +25,7 @@ class CreateMeetingRequestDTO(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     organizer_name: str | None = Field(default=None, max_length=120)
+    is_draft: bool = Field(default=False)
     duration_minutes: int | None = Field(default=None, ge=15, le=1440)
     location: str | None = Field(default=None, max_length=255)
     participants_count: int | None = Field(default=None, ge=1, le=100000)

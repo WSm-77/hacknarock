@@ -34,6 +34,7 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
 
   async function submitMeeting(
     title: string,
+    isDraft: boolean,
     description?: string,
     duration?: number,
     location?: string,
@@ -41,12 +42,12 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
     expiration?: string,
     autoVenue?: boolean,
     venueRecommendationsCount?: number,
-    proposedBlocks?: Array<{ day: string; time: string }>,
-  ): Promise<void> {
+    proposedBlocks?: Array<{ day: string; time?: string; start_time?: string; end_time?: string }>,
+  ): Promise<boolean> {
     if (!title.trim()) {
       setErrorMessage('Meeting title is required.');
       setSuccessMessage(null);
-      return;
+      return false;
     }
 
     try {
@@ -56,6 +57,7 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
       const response = await createMeeting({
         title: title.trim(),
         description: description?.trim() || undefined,
+        is_draft: isDraft,
         duration_minutes: duration || undefined,
         location: location?.trim() || undefined,
         participants_count: participantsCount || undefined,
@@ -76,6 +78,7 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
       setShareLink(nextShareLink);
       setDidCopy(false);
       setSuccessMessage(`${response.message} Poll ID: ${response.poll_id}`);
+      return true;
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.detail);
@@ -85,6 +88,7 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
       setSuccessMessage(null);
       setShareLink(null);
       setDidCopy(false);
+      return false;
     } finally {
       setIsSubmitting(false);
     }

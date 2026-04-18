@@ -143,6 +143,7 @@ class IntegrationDatabaseRepository:
             location=(payload.location or "").strip(),
             organizer_id=self._resolve_organizer_id(),
             description=payload.description,
+            is_draft=payload.is_draft,
             status=MeetingStatus.COLLECTING_AVAILABILITY.value,
             availability_deadline=deadline,
             proposed_blocks=compacted_blocks,

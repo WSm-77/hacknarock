@@ -17,6 +17,7 @@ class MeetingORM(Base):
     location: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     organizer_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
+    is_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[MeetingStatus] = mapped_column(String(32), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     availability_deadline: Mapped[datetime] = mapped_column(DateTime, nullable=False)

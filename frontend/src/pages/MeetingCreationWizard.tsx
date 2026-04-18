@@ -29,12 +29,8 @@ export function MeetingCreationWizard() {
     submitMeeting,
     copyLink,
   } = useCreateMeeting({
-    onCreated: (pollId, createdShareLink) => {
-      navigate(`/vote/${pollId}`, {
-        state: {
-          createdShareLink,
-        },
-      });
+    onCreated: () => {
+      navigate('/');
     },
   });
 
@@ -42,7 +38,11 @@ export function MeetingCreationWizard() {
     event.preventDefault();
 
     const form = event.currentTarget;
+    const nativeSubmitEvent = event.nativeEvent as SubmitEvent;
+    const submitter = nativeSubmitEvent.submitter as HTMLButtonElement | null;
     const formData = new FormData(form);
+    const submitIntent = submitter?.name === 'submit-intent' ? (submitter.value || 'create') : 'create';
+    const isDraft = submitIntent === 'draft';
 
     const title = String(formData.get('meeting-title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
@@ -54,7 +54,7 @@ export function MeetingCreationWizard() {
     const venueRecommendationsRaw = String(formData.get('venue-recommendations-count') ?? '').trim() || null;
     const proposedBlocksRaw = String(formData.get('proposed-blocks') ?? '');
 
-    let proposedBlocks: Array<{ day: string; time: string }> = [];
+    let proposedBlocks: Array<{ day: string; time?: string; start_time?: string; end_time?: string }> = [];
     try {
       if (proposedBlocksRaw) {
         proposedBlocks = JSON.parse(proposedBlocksRaw);
@@ -63,8 +63,9 @@ export function MeetingCreationWizard() {
       console.error('Failed to parse proposed blocks:', e);
     }
 
-    await submitMeeting(
+    const success = await submitMeeting(
       title,
+      isDraft,
       description || undefined,
       duration ? parseInt(duration, 10) : undefined,
       location || undefined,
@@ -74,6 +75,10 @@ export function MeetingCreationWizard() {
       venueRecommendationsRaw ? parseInt(venueRecommendationsRaw, 10) : undefined,
       proposedBlocks,
     );
+
+    if (success) {
+      navigate('/');
+    }
   }
 
   const navLinks = [

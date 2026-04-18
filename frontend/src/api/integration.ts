@@ -20,6 +20,7 @@ export interface CreateMeetingPayload {
   title: string;
   description?: string;
   organizer_name?: string;
+  is_draft?: boolean;
   duration_minutes?: number;
   location?: string;
   participants_count?: number;
