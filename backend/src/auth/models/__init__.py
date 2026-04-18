@@ -1,8 +1,4 @@
-from .login_response import LoginResponse
-from .user_create import UserCreate
-from .user_in_db import UserInDB
-from .user_login import UserLogin
-from .user_response import UserResponse
+from ...model.auth_models import LoginResponse, UserCreate, UserInDB, UserLogin, UserResponse
 from ...database.models import AuthSessionORM, UserORM
 
 __all__ = [
