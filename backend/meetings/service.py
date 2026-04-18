@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 import secrets
 
@@ -12,6 +12,16 @@ from meetings.models import MeetingORM, ParticipantVoteORM
 
 
 class MeetingService:
+    @staticmethod
+    def _utc_now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    @staticmethod
+    def _normalize_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     @staticmethod
     def _to_timeblocks(raw_blocks: list[dict]) -> list[TimeBlock]:
         return [TimeBlock(**block) for block in raw_blocks]
@@ -34,9 +44,10 @@ class MeetingService:
 
     @staticmethod
     def _touch_deadline_transition(meeting: MeetingORM) -> bool:
+        deadline = MeetingService._normalize_utc(meeting.availability_deadline)
         if (
             meeting.status == MeetingStatus.COLLECTING_AVAILABILITY.value
-            and datetime.utcnow() >= meeting.availability_deadline
+            and MeetingService._utc_now() >= deadline
         ):
             meeting.status = MeetingStatus.READY_FOR_AI.value
             return True
@@ -50,7 +61,8 @@ class MeetingService:
         proposed_blocks: list[TimeBlock],
         availability_deadline: datetime,
     ) -> MeetingResponse:
-        if availability_deadline <= datetime.utcnow():
+        normalized_deadline = cls._normalize_utc(availability_deadline)
+        if normalized_deadline <= cls._utc_now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Deadline musi byc w przyszlosci",
@@ -59,7 +71,7 @@ class MeetingService:
         meeting = MeetingORM(
             organizer_id=organizer.id,
             status=MeetingStatus.COLLECTING_AVAILABILITY.value,
-            availability_deadline=availability_deadline,
+            availability_deadline=normalized_deadline,
             proposed_blocks=cls._serialize_timeblocks(proposed_blocks),
             public_token=secrets.token_urlsafe(16),
         )
@@ -89,14 +101,15 @@ class MeetingService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Nie mozna edytowac po zakonczeniu zbierania dostepnosci",
             )
-        if availability_deadline <= datetime.utcnow():
+        normalized_deadline = cls._normalize_utc(availability_deadline)
+        if normalized_deadline <= cls._utc_now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Deadline musi byc w przyszlosci",
             )
 
         meeting.proposed_blocks = cls._serialize_timeblocks(proposed_blocks)
-        meeting.availability_deadline = availability_deadline
+        meeting.availability_deadline = normalized_deadline
         db.commit()
         db.refresh(meeting)
         return cls._meeting_response(meeting)

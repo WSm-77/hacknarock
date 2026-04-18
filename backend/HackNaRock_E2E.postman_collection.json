@@ -1,0 +1,534 @@
+{
+  "info": {
+    "_postman_id": "c80cc0af-ce00-4e01-aa72-3764a72cff4d",
+    "name": "HackNaRock E2E Flow",
+    "description": "End-to-end flow: register/login users, create meeting, submit availability, wait for deadline, trigger AI recommendation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47032109",
+    "_collection_link": "https://go.postman.co/collection/47032109-c80cc0af-ce00-4e01-aa72-3764a72cff4d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1. Register Organizer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Organizer registered', function () {",
+              "  pm.response.to.have.status(201);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{organizerEmail}}\",\n  \"password\": \"{{organizerPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Register Participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Participant registered', function () {",
+              "  pm.response.to.have.status(201);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{participantEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Login Organizer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Organizer login ok', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('organizerToken', body.access_token);",
+              "pm.collectionVariables.set('organizerId', body.user.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{organizerEmail}}\",\n  \"password\": \"{{organizerPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Login Participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Participant login ok', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('participantToken', body.access_token);",
+              "pm.collectionVariables.set('participantId', body.user.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{participantEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Auth Me (Organizer)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Auth me works', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{organizerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "me"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Create Meeting (Organizer)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Meeting created', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('meetingId', body.id);",
+              "const token = body.public_link.split('/').pop();",
+              "pm.collectionVariables.set('publicToken', token);",
+              "pm.test('Meeting in collecting status', function () {",
+              "  pm.expect(body.status).to.eql('collecting_availability');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{organizerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"proposed_blocks\": [\n    {\n      \"start_time\": \"{{blockStart}}\",\n      \"end_time\": \"{{blockEnd}}\"\n    }\n  ],\n  \"availability_deadline\": \"{{availabilityDeadline}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/meetings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Participant Submits Availability",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Availability submitted', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{participantToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"availability\": {\n    \"available_blocks\": [\n      {\n        \"start_time\": \"{{blockStart}}\",\n        \"end_time\": \"{{blockEnd}}\"\n      }\n    ],\n    \"maybe_blocks\": []\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/meetings/join/{{publicToken}}/availability",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings",
+            "join",
+            "{{publicToken}}",
+            "availability"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Wait Until Ready For AI",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Meeting details available', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "const attempts = Number(pm.collectionVariables.get('waitAttempts') || '0') + 1;",
+              "pm.collectionVariables.set('waitAttempts', String(attempts));",
+              "if (body.status !== 'ready_for_ai') {",
+              "  if (attempts > 20) {",
+              "    pm.test('Deadline transition reached in time', function () {",
+              "      pm.expect.fail('Meeting did not reach ready_for_ai within 20 polls.');",
+              "    });",
+              "  } else {",
+              "    postman.setNextRequest('8. Wait Until Ready For AI');",
+              "  }",
+              "} else {",
+              "  postman.setNextRequest('9. Trigger AI Recommendation');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{organizerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/meetings/{{meetingId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings",
+            "{{meetingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "9. Trigger AI Recommendation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('AI recommendation triggered', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Meeting switched to ai_recommended', function () {",
+              "  pm.expect(body.status).to.eql('ai_recommended');",
+              "});",
+              "pm.test('Recommendation exists', function () {",
+              "  pm.expect(body.ai_recommendation).to.be.a('string');",
+              "  pm.expect(body.ai_recommendation.length).to.be.greaterThan(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{organizerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/meetings/{{meetingId}}/ai-recommendation",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings",
+            "{{meetingId}}",
+            "ai-recommendation"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10. Verify Final Meeting State",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Final details fetched', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Final state is ai_recommended', function () {",
+              "  pm.expect(body.status).to.eql('ai_recommended');",
+              "});",
+              "pm.test('Votes counted', function () {",
+              "  pm.expect(body.votes_count).to.be.at.least(1);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{organizerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/meetings/{{meetingId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings",
+            "{{meetingId}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  const runId = Date.now().toString();",
+          "  pm.collectionVariables.set('runId', runId);",
+          "  pm.collectionVariables.set('organizerEmail', `organizer_${runId}@example.com`);",
+          "  pm.collectionVariables.set('participantEmail', `participant_${runId}@example.com`);",
+          "  pm.collectionVariables.set('organizerPassword', 'OrganizerPass123!');",
+          "  pm.collectionVariables.set('participantPassword', 'ParticipantPass123!');",
+          "  pm.collectionVariables.set('baseUrl', pm.collectionVariables.get('baseUrl') || 'http://localhost:8000');",
+          "}",
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "organizerEmail",
+      "value": ""
+    },
+    {
+      "key": "organizerPassword",
+      "value": ""
+    },
+    {
+      "key": "participantEmail",
+      "value": ""
+    },
+    {
+      "key": "participantPassword",
+      "value": ""
+    },
+    {
+      "key": "organizerToken",
+      "value": ""
+    },
+    {
+      "key": "participantToken",
+      "value": ""
+    },
+    {
+      "key": "organizerId",
+      "value": ""
+    },
+    {
+      "key": "participantId",
+      "value": ""
+    },
+    {
+      "key": "meetingId",
+      "value": ""
+    },
+    {
+      "key": "publicToken",
+      "value": ""
+    },
+    {
+      "key": "availabilityDeadline",
+      "value": ""
+    },
+    {
+      "key": "blockStart",
+      "value": ""
+    },
+    {
+      "key": "blockEnd",
+      "value": ""
+    },
+    {
+      "key": "waitAttempts",
+      "value": "0"
+    }
+  ]
+}

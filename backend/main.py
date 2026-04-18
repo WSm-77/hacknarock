@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
@@ -5,10 +8,18 @@ from auth.router import router as auth_router
 from db import Base, engine
 from meetings.router import router as meetings_router
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Tworzy brakujace tabele przy starcie aplikacji."""
+    Base.metadata.create_all(bind=engine)
+    yield
+
 app = FastAPI(
     title="HackNaRock API",
     description="Backend API for HackNaRock",
     version="0.1.0",
+    lifespan=lifespan,
     openapi_tags=[
         {
             "name": "Authentication",
@@ -24,11 +35,6 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(meetings_router)
 
-
-@app.on_event("startup")
-def create_tables() -> None:
-    """Tworzy brakujące tabele przy starcie aplikacji."""
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
