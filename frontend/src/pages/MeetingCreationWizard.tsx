@@ -100,8 +100,8 @@ export function MeetingCreationWizard() {
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
     {
-      label: 'My Polls',
-      href: '/',
+      label: 'Polls',
+      href: '/polls',
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
   ];

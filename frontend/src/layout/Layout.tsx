@@ -19,6 +19,7 @@ export function Layout({ children }: LayoutProps) {
   const isRootDetailsRoute = pathSegments.length === 2 && pathSegments[1] === 'details';
   const isStandaloneRoute =
     pathname === '/' ||
+    pathname === '/polls' ||
     pathname === '/create' ||
     pathname === '/login' ||
     pathname === '/logging' ||

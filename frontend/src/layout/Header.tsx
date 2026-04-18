@@ -34,13 +34,10 @@ export function Header() {
         <nav className="header-nav">
           <ul className="nav-links">
             <li>
-              <Link to="/">Home</Link>
+              <Link to="/">Dashboard</Link>
             </li>
             <li>
-              <Link to="/">Calendar</Link>
-            </li>
-            <li>
-              <Link to="/create">Create Meeting</Link>
+              <Link to="/polls">Polls</Link>
             </li>
           </ul>
         </nav>

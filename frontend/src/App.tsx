@@ -14,6 +14,7 @@ function App() {
         <Routes>
           {/* Main Dashboard */}
           <Route path="/" element={<Dashboard />} />
+          <Route path="/polls" element={<Dashboard />} />
 
           {/* Study Entry */}
           <Route path="/login" element={<Logging />} />

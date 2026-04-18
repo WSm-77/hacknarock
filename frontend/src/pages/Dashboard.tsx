@@ -4,6 +4,7 @@
  * Converted from static HTML into a React component.
  */
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthSession, logout } from '../api/auth';
 import { ApiError } from '../api/client';
@@ -17,6 +18,7 @@ import { DashboardLegend } from '../components/dashboard/DashboardLegend';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,24 +69,20 @@ export function Dashboard() {
 
   const navLinks = [
     {
-      label: 'Archive',
+      label: 'Dashboard',
       href: '/',
-      className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
+      className:
+        location.pathname === '/'
+          ? 'font-serif tracking-tight text-[#9a4021] dark:text-[#c96442] font-semibold border-b-2 border-[#9a4021] pb-1'
+          : 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
     },
     {
-      label: 'Study',
-      href: '/login',
-      className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
-    },
-    {
-      label: 'Curations',
-      href: '/create',
-      className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
-    },
-    {
-      label: 'Schedule',
-      href: '/',
-      className: 'font-serif tracking-tight text-[#9a4021] dark:text-[#c96442] font-semibold border-b-2 border-[#9a4021] pb-1',
+      label: 'Polls',
+      href: '/polls',
+      className:
+        location.pathname === '/polls'
+          ? 'font-serif tracking-tight text-[#9a4021] dark:text-[#c96442] font-semibold border-b-2 border-[#9a4021] pb-1'
+          : 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
     },
   ];
 
