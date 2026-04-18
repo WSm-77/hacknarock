@@ -84,6 +84,3 @@ def trigger_ai_recommendation(
 ):
     return MeetingService.trigger_ai_recommendation(db=db, meeting_id=meeting_id, organizer=current_user)
 
-@router.post("/{meeting_id}/vote")
-async def submit_vote(meeting_id: str):
-    return {"message": f"Tutaj znajomi oddadzą głos na spotkanie {meeting_id}"}

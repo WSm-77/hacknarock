@@ -8,18 +8,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api_integration.router import router as integration_router
 from src.auth.router import router as auth_router
-try:
-    from backend.src.api_integration.router import router as integration_router
-    from backend.src.auth.router import router as auth_router
-    from backend.src.meetings.router import router as meetings_router
-except ModuleNotFoundError:
-    from src.api_integration.router import router as integration_router
-    from src.auth.router import router as auth_router
-    from src.meetings.router import router as meetings_router
+from src.meetings.router import router as meetings_router
 
 from db import Base, engine
-from src.meetings.router import router as meetings_router
 
 
 @asynccontextmanager
@@ -86,7 +79,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
