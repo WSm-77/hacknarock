@@ -4,6 +4,9 @@ import { Logging } from './pages/Logging';
 import { Dashboard } from './pages/Dashboard';
 import { MeetingCreationWizard } from './pages/MeetingCreationWizard';
 import { ParticipationPage } from './pages/ParticipationPage';
+import { MeetingManagementResults } from './pages/MeetingManagementResults';
+import { ParticipantAvailabilityPage } from './pages/ParticipantAvailabilityPage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import './App.css';
 import { MeetingDetails } from './pages/MeetingDetails';
 
@@ -25,6 +28,16 @@ function App() {
 
           {/* Participation - Public Link */}
           <Route path="/vote/:pollId" element={<ParticipationPage />} />
+
+          {/* Participant Availability - Authenticated Link */}
+          <Route
+            path="/meetings/join/:publicToken"
+            element={(
+              <ProtectedRoute>
+                <ParticipantAvailabilityPage />
+              </ProtectedRoute>
+            )}
+          />
 
           {/* Results Management */}
           <Route path="/:meetingId/details" element={<MeetingDetails />} />
