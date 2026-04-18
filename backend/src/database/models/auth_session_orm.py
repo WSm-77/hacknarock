@@ -4,7 +4,7 @@ from uuid import uuid4
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import Base
+from ..session import Base
 
 
 class AuthSessionORM(Base):

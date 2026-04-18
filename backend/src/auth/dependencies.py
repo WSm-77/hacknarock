@@ -3,8 +3,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from ..database.models import UserORM
+from ..database.session import get_db
 from .service import UserService
-from db import get_db
 
 security = HTTPBearer(auto_error=True)
 
