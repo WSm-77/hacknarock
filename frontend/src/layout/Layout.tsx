@@ -20,6 +20,7 @@ export function Layout({ children }: LayoutProps) {
     pathname === '/create' ||
     pathname === '/login' ||
     pathname === '/logging' ||
+    pathname.startsWith('/meeting/') ||
     pathname.startsWith('/vote/');
 
   if (isStandaloneRoute) {

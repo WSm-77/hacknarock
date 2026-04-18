@@ -4,8 +4,8 @@ import { Logging } from './pages/Logging';
 import { Dashboard } from './pages/Dashboard';
 import { MeetingCreationWizard } from './pages/MeetingCreationWizard';
 import { ParticipationPage } from './pages/ParticipationPage';
-import { MeetingManagementResults } from './pages/MeetingManagementResults';
 import './App.css';
+import { MeetingDetails } from './pages/MeetingDetails';
 
 function App() {
   return (
@@ -26,7 +26,7 @@ function App() {
           <Route path="/vote/:pollId" element={<ParticipationPage />} />
 
           {/* Results Management */}
-          <Route path="/meeting/:meetingId" element={<MeetingManagementResults />} />
+          <Route path="/meeting/:meetingId" element={<MeetingDetails />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Dashboard />} />
