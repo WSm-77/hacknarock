@@ -8,14 +8,14 @@ from fastapi.responses import JSONResponse
 from src.api_integration.router import router as integration_router
 from src.auth.router import router as auth_router
 from src.core.config import get_cors_origins
-from src.database.session import Base, engine
 from src.meetings.router import router as meetings_router
+from src.scripts.create_db import create_db
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Create missing tables during app startup."""
-    Base.metadata.create_all(bind=engine)
+    create_db()
     yield
 
 
