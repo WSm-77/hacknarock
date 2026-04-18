@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from meetings.common import ParticipantAvailability, TimeBlock
+from src.meetings.common import ParticipantAvailability, TimeBlock
 
 
 class MeetingStatus(str, Enum):

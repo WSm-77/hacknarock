@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from auth.router import router as auth_router
+from src.auth.router import router as auth_router
 from db import Base, engine
-from meetings.router import router as meetings_router
+from src.meetings.router import router as meetings_router
 
 
 @asynccontextmanager
