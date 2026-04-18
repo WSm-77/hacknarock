@@ -3,6 +3,10 @@
  *
  * Converted from the provided HTML template.
  */
+import type { FormEvent } from 'react';
+import { useState } from 'react';
+import { ApiError } from '../api/client';
+import { createMeeting } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { WizardActions } from '../components/meeting-wizard/WizardActions';
@@ -12,6 +16,47 @@ import { WizardHeader } from '../components/meeting-wizard/WizardHeader';
 import { WizardTimingSection } from '../components/meeting-wizard/WizardTimingSection';
 
 export function MeetingCreationWizard() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const title = String(formData.get('meeting-title') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+
+    if (!title) {
+      setErrorMessage('Meeting title is required.');
+      setSuccessMessage(null);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      const response = await createMeeting({
+        title,
+        description: description || undefined,
+      });
+
+      setSuccessMessage(`${response.message} Poll ID: ${response.poll_id}`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMessage(error.detail);
+      } else {
+        setErrorMessage('Failed to create meeting. Please try again.');
+      }
+      setSuccessMessage(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const navLinks = [
     {
       label: 'Dashboard',
@@ -86,11 +131,21 @@ export function MeetingCreationWizard() {
             </svg>
           </div>
 
-          <form className="space-y-16 relative z-10">
+          <form className="space-y-16 relative z-10" onSubmit={handleSubmit}>
             <WizardEssentialsSection />
             <WizardTimingSection />
             <WizardCurationSection />
-            <WizardActions />
+            {errorMessage && (
+              <p className="rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
+                {errorMessage}
+              </p>
+            )}
+            {successMessage && (
+              <p className="rounded-lg border border-green-700/20 bg-green-700/5 px-4 py-3 text-sm text-green-800">
+                {successMessage}
+              </p>
+            )}
+            <WizardActions isSubmitting={isSubmitting} />
           </form>
         </div>
       </main>

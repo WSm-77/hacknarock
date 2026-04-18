@@ -3,6 +3,9 @@
  *
  * Converted from static HTML into a React component.
  */
+import { useEffect, useState } from 'react';
+import { ApiError } from '../api/client';
+import { fetchDashboard, type DashboardResponse } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { ActivePollsPanel } from '../components/dashboard/ActivePollsPanel';
@@ -11,6 +14,43 @@ import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { DashboardLegend } from '../components/dashboard/DashboardLegend';
 
 export function Dashboard() {
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadDashboard(): Promise<void> {
+      try {
+        setIsLoading(true);
+        const result = await fetchDashboard();
+        if (!isCancelled) {
+          setDashboard(result);
+          setErrorMessage(null);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          if (error instanceof ApiError) {
+            setErrorMessage(error.detail);
+          } else {
+            setErrorMessage('Could not load dashboard data.');
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const navLinks = [
     {
       label: 'Archive',
@@ -85,10 +125,23 @@ export function Dashboard() {
       />
 
       <main className="flex-grow max-w-screen-2xl mx-auto w-full px-8 py-12 grid grid-cols-12 gap-8">
-        <ActivePollsPanel />
+        <ActivePollsPanel
+          isLoading={isLoading}
+          openPollCount={dashboard?.open_polls}
+          recentMeetings={dashboard?.recent_meetings}
+        />
 
         <section className="col-span-12 lg:col-span-9">
-          <DashboardHeader />
+          <DashboardHeader
+            activeMeetings={dashboard?.active_meetings}
+            openPolls={dashboard?.open_polls}
+            upcomingMeetings={dashboard?.upcoming_meetings}
+          />
+          {errorMessage && (
+            <p className="mb-4 rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
+              {errorMessage}
+            </p>
+          )}
           <CalendarBoard />
           <DashboardLegend />
         </section>
