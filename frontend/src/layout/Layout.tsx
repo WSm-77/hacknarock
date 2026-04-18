@@ -15,7 +15,12 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { pathname } = useLocation();
-  const isStandaloneRoute = pathname === '/' || pathname === '/create' || pathname.startsWith('/vote/');
+  const isStandaloneRoute =
+    pathname === '/' ||
+    pathname === '/create' ||
+    pathname === '/login' ||
+    pathname === '/logging' ||
+    pathname.startsWith('/vote/');
 
   if (isStandaloneRoute) {
     return <>{children}</>;
