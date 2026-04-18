@@ -19,4 +19,4 @@ dev = []
 package = true
 
 [tool.setuptools.packages.find]
-include = ["src"]
+include = ["src*"]

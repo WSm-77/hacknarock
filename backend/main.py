@@ -12,7 +12,7 @@ app = FastAPI(
 async def root() -> JSONResponse:
     """
     Root endpoint that returns a welcome message.
-    
+
     Returns:
         JSONResponse: Welcome message with API info
     """
@@ -27,7 +27,7 @@ async def root() -> JSONResponse:
 async def health_check() -> JSONResponse:
     """
     Health check endpoint.
-    
+
     Returns:
         JSONResponse: Health status
     """
