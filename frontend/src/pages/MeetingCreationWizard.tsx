@@ -4,48 +4,36 @@
  * Converted from the provided HTML template.
  */
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError } from '../api/client';
-import { createMeeting } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
+import { CreateSuccessPanel } from '../components/meeting-wizard/CreateSuccessPanel';
 import { WizardActions } from '../components/meeting-wizard/WizardActions';
 import { WizardCurationSection } from '../components/meeting-wizard/WizardCurationSection';
 import { WizardEssentialsSection } from '../components/meeting-wizard/WizardEssentialsSection';
 import { WizardHeader } from '../components/meeting-wizard/WizardHeader';
 import { WizardTimingSection } from '../components/meeting-wizard/WizardTimingSection';
+import { useCreateMeeting } from '../hooks/useCreateMeeting';
 
 export function MeetingCreationWizard() {
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [shareLink, setShareLink] = useState<string | null>(null);
-  const [didCopy, setDidCopy] = useState(false);
-
-  useEffect(() => {
-    if (!successMessage || !shareLink) {
-      return;
-    }
-
-    const pollId = shareLink.split('/').at(-1);
-    if (!pollId) {
-      return;
-    }
-
-    const redirectTimeout = window.setTimeout(() => {
+  const {
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    shareLink,
+    didCopy,
+    submitMeeting,
+    copyLink,
+  } = useCreateMeeting({
+    onCreated: (pollId, createdShareLink) => {
       navigate(`/vote/${pollId}`, {
         state: {
-          createdShareLink: shareLink,
+          createdShareLink,
         },
       });
-    }, 1800);
-
-    return () => {
-      window.clearTimeout(redirectTimeout);
-    };
-  }, [navigate, shareLink, successMessage]);
+    },
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -55,60 +43,7 @@ export function MeetingCreationWizard() {
 
     const title = String(formData.get('meeting-title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
-
-    if (!title) {
-      setErrorMessage('Meeting title is required.');
-      setSuccessMessage(null);
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setErrorMessage(null);
-
-      const response = await createMeeting({
-        title,
-        description: description || undefined,
-      });
-
-      const nextShareLink = `${window.location.origin}/vote/${response.poll_id}`;
-      const meetingPollMapRaw = sessionStorage.getItem('snapslot:meeting-poll-map');
-      const meetingPollMap = meetingPollMapRaw ? JSON.parse(meetingPollMapRaw) as Record<string, string> : {};
-      meetingPollMap[response.meeting_id] = response.poll_id;
-
-      sessionStorage.setItem('snapslot:meeting-poll-map', JSON.stringify(meetingPollMap));
-      sessionStorage.setItem('snapslot:last-created-share-link', nextShareLink);
-
-      setShareLink(nextShareLink);
-      setDidCopy(false);
-
-      setSuccessMessage(`${response.message} Poll ID: ${response.poll_id}`);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setErrorMessage(error.detail);
-      } else {
-        setErrorMessage('Failed to create meeting. Please try again.');
-      }
-      setSuccessMessage(null);
-      setShareLink(null);
-      setDidCopy(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleCopyLink(): Promise<void> {
-    if (!shareLink) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setDidCopy(true);
-    } catch {
-      setDidCopy(false);
-      setErrorMessage('Unable to copy automatically. Please copy the link manually.');
-    }
+    await submitMeeting(title, description || undefined);
   }
 
   const navLinks = [
@@ -203,29 +138,12 @@ export function MeetingCreationWizard() {
               </p>
             )}
             {successMessage && (
-              <div className="space-y-3 rounded-lg border border-green-700/20 bg-green-700/5 px-4 py-3 text-sm text-green-800">
-                <p>{successMessage}</p>
-                {shareLink && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-green-900/80">Share this poll link</p>
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                      <input
-                        className="w-full rounded-md border border-green-900/20 bg-white/80 px-3 py-2 text-xs text-green-900"
-                        readOnly
-                        value={shareLink}
-                      />
-                      <button
-                        type="button"
-                        className="rounded-md bg-green-800 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
-                        onClick={() => void handleCopyLink()}
-                      >
-                        {didCopy ? 'Copied' : 'Copy Link'}
-                      </button>
-                    </div>
-                    <p className="text-xs text-green-900/70">Redirecting to voting page...</p>
-                  </div>
-                )}
-              </div>
+              <CreateSuccessPanel
+                didCopy={didCopy}
+                onCopy={() => void copyLink()}
+                shareLink={shareLink}
+                successMessage={successMessage}
+              />
             )}
             <WizardActions isSubmitting={isSubmitting} />
           </form>

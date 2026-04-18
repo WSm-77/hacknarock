@@ -4,30 +4,36 @@
  * Converted from the provided mixed HTML/template content into a React component.
  */
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ApiError } from '../api/client';
-import { fetchPoll, submitPollVote, type PollResponse } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { ParticipationActions } from '../components/participation/ParticipationActions';
 import { ParticipationCurationSection } from '../components/participation/ParticipationCurationSection';
 import { ParticipationEssentialsSection } from '../components/participation/ParticipationEssentialsSection';
 import { ParticipationHeader } from '../components/participation/ParticipationHeader';
+import { PollParticipationCard } from '../components/participation/PollParticipationCard';
 import { ParticipationSummarySidebar } from '../components/participation/ParticipationSummarySidebar';
 import { ParticipationTemporalSection } from '../components/participation/ParticipationTemporalSection';
+import { ShareLinkBanner } from '../components/participation/ShareLinkBanner';
+import { usePollParticipation } from '../hooks/usePollParticipation';
 
 export function ParticipationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { pollId } = useParams<{ pollId: string }>();
-  const [poll, setPoll] = useState<PollResponse | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState('');
-  const [voterId, setVoterId] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const {
+    poll,
+    selectedOptionId,
+    setSelectedOptionId,
+    voterId,
+    setVoterId,
+    isLoading,
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    submitVote,
+  } = usePollParticipation({ pollId });
   const [didCopyShareLink, setDidCopyShareLink] = useState(false);
 
   const stateShareLink = (location.state as { createdShareLink?: string } | null)?.createdShareLink;
@@ -37,78 +43,9 @@ export function ParticipationPage() {
     ? candidateShareLink
     : null;
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadPoll(): Promise<void> {
-      if (!pollId) {
-        setErrorMessage('Missing poll ID in route.');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const data = await fetchPoll(pollId);
-
-        if (!isCancelled) {
-          setPoll(data);
-          setSelectedOptionId(data.options[0]?.option_id ?? '');
-          setErrorMessage(null);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          if (error instanceof ApiError) {
-            setErrorMessage(error.detail);
-          } else {
-            setErrorMessage('Failed to load poll data.');
-          }
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadPoll();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [pollId]);
-
   async function handleVoteSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-
-    if (!pollId || !selectedOptionId) {
-      setErrorMessage('Please select an option before submitting your vote.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setErrorMessage(null);
-
-      const result = await submitPollVote(pollId, {
-        option_id: selectedOptionId,
-        voter_id: voterId.trim() || undefined,
-      });
-
-      setSuccessMessage(`Vote recorded. Total votes: ${result.total_votes}.`);
-
-      const refreshedPoll = await fetchPoll(pollId);
-      setPoll(refreshedPoll);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setErrorMessage(error.detail);
-      } else {
-        setErrorMessage('Vote submission failed. Please retry.');
-      }
-      setSuccessMessage(null);
-    } finally {
-      setIsSubmitting(false);
-    }
+    await submitVote();
   }
 
   async function handleCopyShareLink(): Promise<void> {
@@ -121,7 +58,6 @@ export function ParticipationPage() {
       setDidCopyShareLink(true);
     } catch {
       setDidCopyShareLink(false);
-      setErrorMessage('Unable to copy share link automatically.');
     }
   }
 
@@ -203,75 +139,21 @@ export function ParticipationPage() {
         <ParticipationHeader />
 
         {shareLink && (
-          <section className="mb-8 rounded-xl border border-green-700/20 bg-green-700/5 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-green-900/80">Share link for this poll</p>
-            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
-              <input
-                className="w-full rounded-md border border-green-900/20 bg-white/80 px-3 py-2 text-xs text-green-900"
-                readOnly
-                value={shareLink}
-              />
-              <button
-                type="button"
-                className="rounded-md bg-green-800 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
-                onClick={() => void handleCopyShareLink()}
-              >
-                {didCopyShareLink ? 'Copied' : 'Copy Link'}
-              </button>
-            </div>
-          </section>
+          <ShareLinkBanner didCopy={didCopyShareLink} onCopy={() => void handleCopyShareLink()} shareLink={shareLink} />
         )}
 
-        <section className="mb-12 rounded-xl border border-outline-variant/20 bg-surface-container-low p-6">
-          <h2 className="font-serif text-2xl text-on-surface mb-3">Poll Participation</h2>
-          {isLoading && <p className="text-sm text-on-surface-variant">Loading poll...</p>}
-          {!isLoading && poll && (
-            <form className="space-y-4" onSubmit={handleVoteSubmit}>
-              <p className="text-on-surface-variant">{poll.question}</p>
-              <div className="space-y-2">
-                {poll.options.map((option) => (
-                  <label key={option.option_id} className="flex cursor-pointer items-center justify-between rounded-lg border border-outline-variant/20 px-4 py-3">
-                    <span className="flex items-center gap-3">
-                      <input
-                        checked={selectedOptionId === option.option_id}
-                        className="h-4 w-4"
-                        name="poll-option"
-                        onChange={() => setSelectedOptionId(option.option_id)}
-                        type="radio"
-                        value={option.option_id}
-                      />
-                      <span>{option.label}</span>
-                    </span>
-                    <span className="text-sm text-on-surface-variant">{option.votes} votes</span>
-                  </label>
-                ))}
-              </div>
-
-              <label className="block text-sm text-on-surface-variant" htmlFor="voter-id">
-                Your identifier (optional)
-              </label>
-              <input
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-4 py-3"
-                id="voter-id"
-                onChange={(event) => setVoterId(event.target.value)}
-                placeholder="e.g. alex-team"
-                value={voterId}
-              />
-
-              <button
-                className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Vote'}
-              </button>
-
-              <p className="text-xs text-on-surface-variant">Total votes: {poll.total_votes}</p>
-            </form>
-          )}
-          {errorMessage && <p className="mt-4 text-sm text-[#9a4021]">{errorMessage}</p>}
-          {successMessage && <p className="mt-4 text-sm text-green-800">{successMessage}</p>}
-        </section>
+        <PollParticipationCard
+          errorMessage={errorMessage}
+          isLoading={isLoading}
+          isSubmitting={isSubmitting}
+          onSelectOption={setSelectedOptionId}
+          onSubmit={handleVoteSubmit}
+          onVoterChange={setVoterId}
+          poll={poll}
+          selectedOptionId={selectedOptionId}
+          successMessage={successMessage}
+          voterId={voterId}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-8 space-y-24">
