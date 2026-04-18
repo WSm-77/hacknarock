@@ -10,6 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from main import app
 import src.app as app_module
+from src.auth.service import UserService
 from src.database.models import AuthSessionORM, UserORM
 from src.database.session import Base, get_db
 
@@ -150,3 +151,103 @@ def test_login_flow_unchanged_after_registration(auth_client):
     assert body["user"]["email"] == register_payload["email"]
     assert "password" not in body["user"]
     assert "hashed_password" not in body["user"]
+
+
+def test_logout_removes_current_session(auth_client):
+    client, session_local = auth_client
+
+    register_payload = {
+        "email": "logout.user@example.com",
+        "name": "Ola",
+        "surname": "Nowak",
+        "password": "secret123",
+    }
+
+    client.post("/auth/register", json=register_payload)
+    login_response = client.post(
+        "/auth/login",
+        json={"email": register_payload["email"], "password": register_payload["password"]},
+    )
+
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+    token_hash = UserService.hash_session_token(token)
+
+    with session_local() as db:
+        session_before = db.query(AuthSessionORM).filter(AuthSessionORM.token == token_hash).first()
+        assert session_before is not None
+        assert session_before.token != token
+
+    logout_response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
+    assert logout_response.status_code == 204
+    assert logout_response.content == b""
+
+    with session_local() as db:
+        session_after = db.query(AuthSessionORM).filter(AuthSessionORM.token == token_hash).first()
+        assert session_after is None
+
+
+def test_logout_invalidates_token_for_protected_endpoints(auth_client):
+    client, _ = auth_client
+
+    register_payload = {
+        "email": "logout.me@example.com",
+        "name": "Piotr",
+        "surname": "Kowalski",
+        "password": "secret123",
+    }
+
+    client.post("/auth/register", json=register_payload)
+    login_response = client.post(
+        "/auth/login",
+        json={"email": register_payload["email"], "password": register_payload["password"]},
+    )
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    me_before = client.get("/auth/me", headers=headers)
+    assert me_before.status_code == 200
+
+    logout_response = client.post("/auth/logout", headers=headers)
+    assert logout_response.status_code == 204
+
+    me_after = client.get("/auth/me", headers=headers)
+    assert me_after.status_code == 401
+
+
+def test_logout_is_idempotent_when_session_already_absent(auth_client):
+    client, _ = auth_client
+
+    register_payload = {
+        "email": "logout.idempotent@example.com",
+        "name": "Adam",
+        "surname": "Nowak",
+        "password": "secret123",
+    }
+
+    client.post("/auth/register", json=register_payload)
+    login_response = client.post(
+        "/auth/login",
+        json={"email": register_payload["email"], "password": register_payload["password"]},
+    )
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first_logout = client.post("/auth/logout", headers=headers)
+    second_logout = client.post("/auth/logout", headers=headers)
+
+    assert first_logout.status_code == 204
+    assert second_logout.status_code == 204
+
+
+def test_protected_endpoints_require_bearer_token(auth_client):
+    client, _ = auth_client
+
+    me_response = client.get("/auth/me")
+    logout_response = client.post("/auth/logout")
+
+    assert me_response.status_code == 401
+    assert me_response.headers.get("www-authenticate") == "Bearer"
+
+    assert logout_response.status_code == 401
+    assert logout_response.headers.get("www-authenticate") == "Bearer"

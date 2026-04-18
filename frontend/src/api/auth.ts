@@ -38,6 +38,8 @@ export interface StoredAuthSession {
 }
 
 const AUTH_SESSION_STORAGE_KEY = 'snapslot.auth.session';
+const MEETING_POLL_MAPPING_KEY = 'snapslot:meeting-poll-map';
+const LAST_CREATED_SHARE_LINK_KEY = 'snapslot:last-created-share-link';
 
 export function login(payload: LoginPayload): Promise<LoginResponse> {
   return apiFetch<LoginResponse>('/auth/login', {
@@ -50,6 +52,12 @@ export function register(payload: RegisterPayload): Promise<RegisterResponse> {
   return apiFetch<RegisterResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function logout(): Promise<void> {
+  return apiFetch<void>('/auth/logout', {
+    method: 'POST',
   });
 }
 
@@ -114,4 +122,6 @@ export function clearAuthSession(): void {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  window.sessionStorage.removeItem(MEETING_POLL_MAPPING_KEY);
+  window.sessionStorage.removeItem(LAST_CREATED_SHARE_LINK_KEY);
 }

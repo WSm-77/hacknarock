@@ -25,6 +25,7 @@ Additional auth endpoints:
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/logout`
 
 ## Auth Contract (Current)
 
@@ -36,6 +37,11 @@ Additional auth endpoints:
 	- Request JSON: `email`, `password`
 	- Success: `200 OK` with `{ access_token, token_type, user }`
 	- Invalid credentials: `401 Unauthorized`
+- `POST /auth/logout`
+	- Requires `Authorization: Bearer <token>`
+	- Success: `204 No Content`
+	- Behavior: invalidates the provided session token (idempotent revoke)
+	- Missing token: `401 Unauthorized`
 
 Validation summary:
 

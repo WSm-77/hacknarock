@@ -95,5 +95,9 @@ export async function apiFetch<TResponse>(
     throw new ApiError(response.status, await parseErrorDetail(response));
   }
 
+  if (response.status === 204) {
+    return undefined as TResponse;
+  }
+
   return (await response.json()) as TResponse;
 }

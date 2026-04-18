@@ -5,6 +5,7 @@
  */
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearAuthSession, logout } from '../api/auth';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { CreateSuccessPanel } from '../components/meeting-wizard/CreateSuccessPanel';
@@ -44,6 +45,17 @@ export function MeetingCreationWizard() {
     const title = String(formData.get('meeting-title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
     await submitMeeting(title, description || undefined);
+  }
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await logout();
+    } catch {
+      // Best effort revoke; local logout must always succeed.
+    }
+
+    clearAuthSession();
+    navigate('/login', { replace: true });
   }
 
   const navLinks = [
@@ -104,13 +116,22 @@ export function MeetingCreationWizard() {
         navClassName="hidden md:flex gap-6 items-center"
         navListClassName="hidden md:flex gap-6 items-center"
         actionArea={(
-          <button
-            type="button"
-            className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
-            onClick={() => navigate('/create')}
-          >
-            Create New
-          </button>
+          <>
+            <button
+              type="button"
+              className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
+              onClick={() => navigate('/create')}
+            >
+              Create New
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-[#dcc1b8] px-4 py-2 text-sm font-medium text-[#56423c] transition hover:border-[#9a4021] hover:text-[#9a4021]"
+              onClick={() => void handleLogout()}
+            >
+              Logout
+            </button>
+          </>
         )}
       />
 
