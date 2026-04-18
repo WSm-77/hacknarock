@@ -1,6 +1,10 @@
 import json
+import sys
+from pathlib import Path
 
-from grounding_service import GroundingService
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from grounding_service.grounding_service import GroundingService
 
 
 def test_conference_meeting_for_50_people():
