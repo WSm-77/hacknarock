@@ -6,11 +6,15 @@ interface LoggingAccessFormProps {
   mode: 'login' | 'register';
   name: string;
   surname: string;
+  latitude: string;
+  longitude: string;
   email: string;
   password: string;
   confirmPassword: string;
   onNameChange: (value: string) => void;
   onSurnameChange: (value: string) => void;
+  onLatitudeChange: (value: string) => void;
+  onLongitudeChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -18,6 +22,8 @@ interface LoggingAccessFormProps {
   validationErrors: {
     name?: string;
     surname?: string;
+    latitude?: string;
+    longitude?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
@@ -30,11 +36,15 @@ export function LoggingAccessForm({
   mode,
   name,
   surname,
+  latitude,
+  longitude,
   email,
   password,
   confirmPassword,
   onNameChange,
   onSurnameChange,
+  onLatitudeChange,
+  onLongitudeChange,
   onEmailChange,
   onPasswordChange,
   onConfirmPasswordChange,
@@ -78,6 +88,40 @@ export function LoggingAccessForm({
             onChange={onSurnameChange}
             disabled={isSubmitting}
             errorMessage={validationErrors.surname}
+          />
+
+          <LoggingField
+            id="latitude"
+            label="Latitude"
+            name="latitude"
+            placeholder="51.5074"
+            type="number"
+            autoComplete="off"
+            value={latitude}
+            onChange={onLatitudeChange}
+            disabled={isSubmitting}
+            required={false}
+            step="any"
+            min={-90}
+            max={90}
+            errorMessage={validationErrors.latitude}
+          />
+
+          <LoggingField
+            id="longitude"
+            label="Longitude"
+            name="longitude"
+            placeholder="-0.1278"
+            type="number"
+            autoComplete="off"
+            value={longitude}
+            onChange={onLongitudeChange}
+            disabled={isSubmitting}
+            required={false}
+            step="any"
+            min={-180}
+            max={180}
+            errorMessage={validationErrors.longitude}
           />
         </>
       )}

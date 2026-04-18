@@ -45,6 +45,8 @@ class UserService:
             email=user_in.email,
             name=user_in.name,
             surname=user_in.surname,
+            latitude=user_in.latitude,
+            longitude=user_in.longitude,
             hashed_password=hashed_password,
         )
         db.add(db_user)

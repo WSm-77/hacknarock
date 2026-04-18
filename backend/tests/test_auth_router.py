@@ -56,6 +56,8 @@ def test_register_creates_user_with_profile_fields(auth_client):
         "email": "new.user@example.com",
         "name": "Anna",
         "surname": "Nowak",
+        "latitude": 52.2297,
+        "longitude": 21.0122,
         "password": "secret123",
     }
 
@@ -73,7 +75,30 @@ def test_register_creates_user_with_profile_fields(auth_client):
         assert saved_user is not None
         assert saved_user.name == payload["name"]
         assert saved_user.surname == payload["surname"]
+        assert saved_user.latitude == payload["latitude"]
+        assert saved_user.longitude == payload["longitude"]
         assert saved_user.hashed_password != payload["password"]
+
+
+def test_register_accepts_optional_location_fields(auth_client):
+    client, session_local = auth_client
+
+    payload = {
+        "email": "no.location@example.com",
+        "name": "Ola",
+        "surname": "Kowal",
+        "password": "secret123",
+    }
+
+    response = client.post("/auth/register", json=payload)
+
+    assert response.status_code == 201
+
+    with session_local() as db:
+        saved_user = db.query(UserORM).filter(UserORM.email == payload["email"]).first()
+        assert saved_user is not None
+        assert saved_user.latitude is None
+        assert saved_user.longitude is None
 
 
 def test_register_duplicate_email_returns_400(auth_client):
@@ -124,6 +149,34 @@ def test_register_requires_profile_fields(auth_client):
 
     assert missing_name.status_code == 422
     assert blank_surname.status_code == 422
+
+
+def test_register_rejects_invalid_location_fields(auth_client):
+    client, _ = auth_client
+
+    invalid_latitude = client.post(
+        "/auth/register",
+        json={
+            "email": "invalid.lat@example.com",
+            "name": "Jan",
+            "surname": "Nowak",
+            "latitude": 91.0,
+            "password": "secret123",
+        },
+    )
+    invalid_longitude = client.post(
+        "/auth/register",
+        json={
+            "email": "invalid.lon@example.com",
+            "name": "Jan",
+            "surname": "Nowak",
+            "longitude": -181.0,
+            "password": "secret123",
+        },
+    )
+
+    assert invalid_latitude.status_code == 422
+    assert invalid_longitude.status_code == 422
 
 
 def test_login_flow_unchanged_after_registration(auth_client):

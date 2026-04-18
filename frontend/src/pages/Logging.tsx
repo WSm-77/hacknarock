@@ -15,10 +15,17 @@ const PASSWORD_MAX_LENGTH = 128;
 interface ValidationErrors {
   name?: string;
   surname?: string;
+  latitude?: string;
+  longitude?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
 }
+
+const LATITUDE_MIN = -90;
+const LATITUDE_MAX = 90;
+const LONGITUDE_MIN = -180;
+const LONGITUDE_MAX = 180;
 
 function isAutoLoginResponse(data: unknown): data is {
   access_token: string;
@@ -43,11 +50,38 @@ function isAutoLoginResponse(data: unknown): data is {
   );
 }
 
+function parseOptionalCoordinate(
+  rawValue: string,
+  label: string,
+  minimum: number,
+  maximum: number,
+): { value?: number; error?: string } {
+  const trimmedValue = rawValue.trim();
+
+  if (!trimmedValue) {
+    return {};
+  }
+
+  const parsedValue = Number(trimmedValue);
+
+  if (!Number.isFinite(parsedValue)) {
+    return { error: `${label} must be a valid number.` };
+  }
+
+  if (parsedValue < minimum || parsedValue > maximum) {
+    return { error: `${label} must be between ${minimum} and ${maximum}.` };
+  }
+
+  return { value: parsedValue };
+}
+
 export function Logging() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<LoggingMode>('login');
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -90,6 +124,8 @@ export function Logging() {
     setMode(nextMode);
     setPassword('');
     setConfirmPassword('');
+    setLatitude('');
+    setLongitude('');
     resetMessages();
   }
 
@@ -109,6 +145,14 @@ export function Logging() {
     }
 
     if (mode === 'register') {
+      const latitudeResult = parseOptionalCoordinate(latitude, 'Latitude', LATITUDE_MIN, LATITUDE_MAX);
+      const longitudeResult = parseOptionalCoordinate(
+        longitude,
+        'Longitude',
+        LONGITUDE_MIN,
+        LONGITUDE_MAX,
+      );
+
       if (!name.trim()) {
         nextErrors.name = 'Name is required.';
       }
@@ -121,6 +165,14 @@ export function Logging() {
         nextErrors.confirmPassword = 'Please confirm your password.';
       } else if (password !== confirmPassword) {
         nextErrors.confirmPassword = 'Passwords do not match.';
+      }
+
+      if (latitudeResult.error) {
+        nextErrors.latitude = latitudeResult.error;
+      }
+
+      if (longitudeResult.error) {
+        nextErrors.longitude = longitudeResult.error;
       }
     }
 
@@ -147,10 +199,20 @@ export function Logging() {
 
     try {
       if (mode === 'register') {
+        const latitudeResult = parseOptionalCoordinate(latitude, 'Latitude', LATITUDE_MIN, LATITUDE_MAX);
+        const longitudeResult = parseOptionalCoordinate(
+          longitude,
+          'Longitude',
+          LONGITUDE_MIN,
+          LONGITUDE_MAX,
+        );
+
         const registrationResponse = await register({
           name: name.trim(),
           surname: surname.trim(),
           email: normalizedEmail,
+          latitude: latitudeResult.value,
+          longitude: longitudeResult.value,
           password,
         });
 
@@ -216,6 +278,8 @@ export function Logging() {
           onModeChange={handleModeChange}
           name={name}
           surname={surname}
+          latitude={latitude}
+          longitude={longitude}
           email={email}
           password={password}
           confirmPassword={confirmPassword}
@@ -226,6 +290,14 @@ export function Logging() {
           onSurnameChange={(value) => {
             setSurname(value);
             clearFieldError('surname');
+          }}
+          onLatitudeChange={(value) => {
+            setLatitude(value);
+            clearFieldError('latitude');
+          }}
+          onLongitudeChange={(value) => {
+            setLongitude(value);
+            clearFieldError('longitude');
           }}
           onEmailChange={(value) => {
             setEmail(value);

@@ -7,11 +7,15 @@ interface LoggingCardProps {
   onModeChange: (mode: 'login' | 'register') => void;
   name: string;
   surname: string;
+  latitude: string;
+  longitude: string;
   email: string;
   password: string;
   confirmPassword: string;
   onNameChange: (value: string) => void;
   onSurnameChange: (value: string) => void;
+  onLatitudeChange: (value: string) => void;
+  onLongitudeChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -19,6 +23,8 @@ interface LoggingCardProps {
   validationErrors: {
     name?: string;
     surname?: string;
+    latitude?: string;
+    longitude?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
@@ -32,11 +38,15 @@ export function LoggingCard({
   onModeChange,
   name,
   surname,
+  latitude,
+  longitude,
   email,
   password,
   confirmPassword,
   onNameChange,
   onSurnameChange,
+  onLatitudeChange,
+  onLongitudeChange,
   onEmailChange,
   onPasswordChange,
   onConfirmPasswordChange,
@@ -92,11 +102,15 @@ export function LoggingCard({
         mode={mode}
         name={name}
         surname={surname}
+        latitude={latitude}
+        longitude={longitude}
         email={email}
         password={password}
         confirmPassword={confirmPassword}
         onNameChange={onNameChange}
         onSurnameChange={onSurnameChange}
+        onLatitudeChange={onLatitudeChange}
+        onLongitudeChange={onLongitudeChange}
         onEmailChange={onEmailChange}
         onPasswordChange={onPasswordChange}
         onConfirmPasswordChange={onConfirmPasswordChange}

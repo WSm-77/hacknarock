@@ -14,6 +14,8 @@ export interface RegisterPayload {
   name: string;
   surname: string;
   email: string;
+  latitude?: number;
+  longitude?: number;
   password: string;
 }
 

@@ -3,11 +3,15 @@ interface LoggingFieldProps {
   label: string;
   name: string;
   placeholder: string;
-  type: 'text' | 'email' | 'password';
+  type: 'text' | 'email' | 'password' | 'number';
   autoComplete: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  required?: boolean;
+  step?: string;
+  min?: number;
+  max?: number;
   errorMessage?: string;
 }
 
@@ -21,6 +25,10 @@ export function LoggingField({
   value,
   onChange,
   disabled = false,
+  required = true,
+  step,
+  min,
+  max,
   errorMessage,
 }: LoggingFieldProps) {
   const hasError = Boolean(errorMessage);
@@ -37,7 +45,10 @@ export function LoggingField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        required
+        step={step}
+        min={min}
+        max={max}
+        required={required}
       />
       <p className="logging-field-error" role="status" aria-live="polite">
         {errorMessage ?? ''}

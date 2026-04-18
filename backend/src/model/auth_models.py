@@ -9,6 +9,18 @@ class UserCreate(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=100, description="Imię użytkownika")
     surname: str = Field(min_length=1, max_length=100, description="Nazwisko użytkownika")
+    latitude: float | None = Field(
+        default=None,
+        ge=-90.0,
+        le=90.0,
+        description="Opcjonalna szerokość geograficzna użytkownika",
+    )
+    longitude: float | None = Field(
+        default=None,
+        ge=-180.0,
+        le=180.0,
+        description="Opcjonalna długość geograficzna użytkownika",
+    )
     password: str = Field(
         min_length=8,
         max_length=128,
