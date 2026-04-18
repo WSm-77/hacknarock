@@ -1,53 +1,34 @@
-from enum import Enum
-from uuid import UUID, uuid4
 from datetime import datetime
-from typing import List, Dict, Optional, Union, Literal, Any
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from enum import Enum
+from uuid import UUID
 
-from backend.src.meetings.common import ProposedBlock, ParticipantAvailability, MeetingDetails, TimeBlock
+from pydantic import BaseModel, Field
 
-
-# ==========================================
-# 1. WYJĄTKI DOMENOWE
-# ==========================================
-
-class UnauthorizedActionError(Exception):
-    """Wyjątek rzucany, gdy akcję próbuje wykonać ktoś inny niż organizator."""
-
-    def __init__(self, action: str):
-        super().__init__(f"Brak uprawnień. Tylko organizator może wykonać akcję: {action}")
+from backend.src.meetings.common import ParticipantAvailability, TimeBlock
 
 
-# ==========================================
-# 2. VALUE OBJECTS & POMOCNICZE TYPY
-# ==========================================
-
-class AvailabilityOption(str, Enum):
-    AVAILABLE = "AVAILABLE"  # Tak
-    MAYBE = "MAYBE"  # Możliwe
-    UNAVAILABLE = "UNAVAILABLE"  # Nie
-
-class Organizer(BaseModel):
-    """Encja twórcy spotkania."""
-    id: UUID = Field(default_factory=uuid4)
-    name: str
-    email: Optional[EmailStr] = None
+class MeetingStatus(str, Enum):
+    COLLECTING_AVAILABILITY = "collecting_availability"
+    READY_FOR_AI = "ready_for_ai"
+    AI_RECOMMENDED = "ai_recommended"
 
 
-class Participant(BaseModel):
-    """Encja uczestnika głosowania."""
-    id: UUID = Field(default_factory=uuid4)
-    nickname: str
-    email: Optional[EmailStr] = None
+class MeetingCreateRequest(BaseModel):
+    proposed_blocks: list[TimeBlock] = Field(min_length=1)
+    availability_deadline: datetime
 
 
-# ==========================================
-# 3. KLASA BAZOWA DLA STANÓW
-# ==========================================
+class MeetingUpdateRequest(BaseModel):
+    proposed_blocks: list[TimeBlock] = Field(min_length=1)
+    availability_deadline: datetime
 
-class BaseMeetingState(BaseModel):
-    """Baza dla wszystkich stanów spotkania. Zawiera logikę autoryzacji."""
-    id: UUID = Field(default_factory=uuid4)
+
+class MeetingVoteRequest(BaseModel):
+    availability: ParticipantAvailability
+
+
+class MeetingResponse(BaseModel):
+    id: UUID
     organizer_id: UUID
 
     def _verify_organizer(self, actor_id: UUID, action: str):

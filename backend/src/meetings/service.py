@@ -1,139 +1,231 @@
-from uuid import UUID
 from datetime import datetime
-from typing import List, Optional
+from uuid import UUID
+import secrets
 
-# Zakładamy, że zaimportujemy wszystko z naszego pliku ze schematami
-from backend.src.meetings.domain import (
-    MeetingDraft,
-    MeetingGatheringAvailability,
-    MeetingVotingClosed,
-    MeetingPendingDetails,
-    MeetingProcessingAI,
-    MeetingFinalized,
-    MeetingState,
-)
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
-from backend.src.meetings.common import TimeBlock, ParticipantAvailability, MeetingDetails, ProposedBlock
+from auth.models import UserORM
+from meetings.common import ParticipantAvailability, TimeBlock
+from meetings.domain import MeetingDetailsResponse, MeetingResponse, MeetingStatus, TriggerAIResponse
+from meetings.models import MeetingORM, ParticipantVoteORM
 
 
 class MeetingService:
-    """
-    Główny serwis zarządzający cyklem życia spotkania, algorytmami
-    wyliczania czasu/lokalizacji oraz integracją z AI.
-    """
+    @staticmethod
+    def _to_timeblocks(raw_blocks: list[dict]) -> list[TimeBlock]:
+        return [TimeBlock(**block) for block in raw_blocks]
 
-    def __init__(self, repository, ai_client):
-        """
-        Wstrzykiwanie zależności (Dependency Injection).
-        :param repository: Obiekt dostępu do bazy danych (np. SQLAlchemyMeetingRepository).
-        :param ai_client: Klient do komunikacji z modelem LLM (np. OpenAI, Gemini).
-        """
-        self.repository = repository
-        self.ai_client = ai_client
+    @staticmethod
+    def _serialize_timeblocks(blocks: list[TimeBlock]) -> list[dict]:
+        return [block.model_dump(mode="json") for block in blocks]
 
-    # ==========================================
-    # 1. ZARZĄDZANIE CYKLEM ŻYCIA (CRUD i Stany)
-    # ==========================================
+    @classmethod
+    def _meeting_response(cls, meeting: MeetingORM) -> MeetingResponse:
+        return MeetingResponse(
+            id=meeting.id,
+            organizer_id=meeting.organizer_id,
+            status=MeetingStatus(meeting.status),
+            availability_deadline=meeting.availability_deadline,
+            proposed_blocks=cls._to_timeblocks(meeting.proposed_blocks),
+            public_link=f"/meetings/join/{meeting.public_token}",
+            ai_recommendation=meeting.ai_recommendation,
+        )
 
-    def create_meeting_draft(self, organizer_id: UUID) -> MeetingDraft:
-        """
-        Inicjuje nowe spotkanie w stanie DRAFT i zapisuje je w bazie.
-        """
-        pass
+    @staticmethod
+    def _touch_deadline_transition(meeting: MeetingORM) -> bool:
+        if (
+            meeting.status == MeetingStatus.COLLECTING_AVAILABILITY.value
+            and datetime.utcnow() >= meeting.availability_deadline
+        ):
+            meeting.status = MeetingStatus.READY_FOR_AI.value
+            return True
+        return False
 
-    def add_proposed_block(
-        self, meeting_id: UUID, actor_id: UUID, start: datetime, end: datetime
-    ) -> MeetingDraft:
-        """
-        Pobiera DRAFT z bazy, wywołuje na nim dodanie bloku z autoryzacją i zapisuje zmiany.
-        """
-        pass
+    @classmethod
+    def create_meeting(
+        cls,
+        db: Session,
+        organizer: UserORM,
+        proposed_blocks: list[TimeBlock],
+        availability_deadline: datetime,
+    ) -> MeetingResponse:
+        if availability_deadline <= datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Deadline musi byc w przyszlosci",
+            )
 
-    def publish_meeting(
-        self, meeting_id: UUID, actor_id: UUID, deadline: datetime
-    ) -> MeetingGatheringAvailability:
-        """
-        Przenosi spotkanie z DRAFT do GATHERING_AVAILABILITY i zapisuje w bazie.
-        """
-        pass
+        meeting = MeetingORM(
+            organizer_id=organizer.id,
+            status=MeetingStatus.COLLECTING_AVAILABILITY.value,
+            availability_deadline=availability_deadline,
+            proposed_blocks=cls._serialize_timeblocks(proposed_blocks),
+            public_token=secrets.token_urlsafe(16),
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+        return cls._meeting_response(meeting)
 
-    def submit_participant_vote(
-        self,
+    @classmethod
+    def update_meeting_by_organizer(
+        cls,
+        db: Session,
         meeting_id: UUID,
-        participant_id: UUID,
+        organizer: UserORM,
+        proposed_blocks: list[TimeBlock],
+        availability_deadline: datetime,
+    ) -> MeetingResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if not meeting:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+        if meeting.organizer_id != organizer.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+
+        cls._touch_deadline_transition(meeting)
+        if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Nie mozna edytowac po zakonczeniu zbierania dostepnosci",
+            )
+        if availability_deadline <= datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Deadline musi byc w przyszlosci",
+            )
+
+        meeting.proposed_blocks = cls._serialize_timeblocks(proposed_blocks)
+        meeting.availability_deadline = availability_deadline
+        db.commit()
+        db.refresh(meeting)
+        return cls._meeting_response(meeting)
+
+    @classmethod
+    def get_meeting_for_organizer(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> MeetingDetailsResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if not meeting:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+        if meeting.organizer_id != organizer.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+
+        changed = cls._touch_deadline_transition(meeting)
+        if changed:
+            db.commit()
+            db.refresh(meeting)
+
+        votes_count = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).count()
+        data = cls._meeting_response(meeting)
+        return MeetingDetailsResponse(**data.model_dump(), votes_count=votes_count)
+
+    @classmethod
+    def submit_participant_availability(
+        cls,
+        db: Session,
+        public_token: str,
+        participant: UserORM,
         availability: ParticipantAvailability,
-    ) -> MeetingGatheringAvailability:
-        """
-        Dodaje lub nadpisuje głos uczestnika.
-        Opcjonalnie: Tutaj dodamy walidację, czy bloki uczestnika mieszczą się w ramach czasowych organizatora.
-        """
-        pass
+    ) -> MeetingResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.public_token == public_token).first()
+        if not meeting:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieprawidlowy link")
 
-    # ==========================================
-    # 2. ALGORYTMY CORE (Magia aplikacji)
-    # ==========================================
+        changed = cls._touch_deadline_transition(meeting)
+        if changed:
+            db.commit()
+            db.refresh(meeting)
 
-    def _calculate_best_time_intersection(
-        self, proposed_blocks: List[ProposedBlock], votes: dict
-    ) -> TimeBlock:
-        """
-        [PRYWATNA METODA ALGORYTMICZNA]
-        Analizuje `available_blocks` oraz `maybe_blocks` wszystkich uczestników
-        i nakłada je na siebie (sweep-line algorithm lub interwały 15-minutowe).
-        Wyszukuje przedział czasu o największym pokryciu (najwięcej osób może przyjść).
-        """
-        pass
+        if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Zbieranie dostepnosci jest zakonczone",
+            )
 
-    def _calculate_geographic_center(self, votes: dict) -> Optional[Location]:
-        """
-        [PRYWATNA METODA ALGORYTMICZNA]
-        Pobiera obiekty `Coordinates` (szerokość i długość geograficzna) ze wszystkich głosów.
-        Wylicza matematyczny środek ciężkości (centroid) i opcjonalnie odpytuje
-        zewnętrzne API (np. Google Places), aby znaleźć konkretne miejsce (np. kawiarnię) blisko tego punktu.
-        """
-        pass
+        vote = (
+            db.query(ParticipantVoteORM)
+            .filter(
+                ParticipantVoteORM.meeting_id == meeting.id,
+                ParticipantVoteORM.participant_id == participant.id,
+            )
+            .first()
+        )
+        if not vote:
+            vote = ParticipantVoteORM(meeting_id=meeting.id, participant_id=participant.id)
+            db.add(vote)
 
-    def close_voting_and_calculate_results(
-        self, meeting_id: UUID, actor_id: UUID
-    ) -> MeetingPendingDetails:
-        """
-        Kluczowa metoda wywoływana ręcznie przez organizatora lub przez Cron po upływie deadline'u.
-        1. Zamyka głosowanie (MeetingVotingClosed).
-        2. Wywołuje algorytm `_calculate_best_time_intersection`.
-        3. (Opcjonalnie) Wywołuje `_calculate_geographic_center`.
-        4. Przechodzi do stanu `MeetingPendingDetails` wstrzykując zwycięski czas.
-        """
-        pass
+        vote.available_blocks = cls._serialize_timeblocks(availability.available_blocks)
+        vote.maybe_blocks = cls._serialize_timeblocks(availability.maybe_blocks)
+        db.commit()
+        db.refresh(meeting)
+        return cls._meeting_response(meeting)
 
-    # ==========================================
-    # 3. INTEGRACJA Z AI I FINALIZACJA
-    # ==========================================
+    @classmethod
+    def trigger_ai_recommendation(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> TriggerAIResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if not meeting:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+        if meeting.organizer_id != organizer.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
 
-    def submit_details_and_trigger_ai(
-        self, meeting_id: UUID, actor_id: UUID, details: MeetingDetails
-    ) -> MeetingProcessingAI:
-        """
-        Przyjmuje szczegóły (w tym hybrydowy `ai_context` i opcjonalnie ostateczną lokalizację).
-        Zmienia stan na PROCESSING_AI.
-        Następnie asynchronicznie (np. w tle / task queue) uruchamia generowanie agendy.
-        """
-        pass
+        changed = cls._touch_deadline_transition(meeting)
+        if changed:
+            db.commit()
+            db.refresh(meeting)
 
-    async def _generate_agenda_with_ai(self, meeting: MeetingProcessingAI) -> str:
-        """
-        [PRYWATNA METODA ASYNCHRONICZNA]
-        Buduje zaawansowany prompt na podstawie:
-        - tematu i charakteru,
-        - elastycznych metadanych w `ai_context`,
-        - wyliczonych godzin i lokalizacji.
-        Wysyła prompt do LLM i zwraca gotowy kod HTML/Markdown z agendą.
-        """
-        pass
+        if meeting.status != MeetingStatus.READY_FOR_AI.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="AI mozna uruchomic dopiero po zakonczeniu zbierania dostepnosci",
+            )
 
-    def finalize_meeting(
-        self, meeting_id: UUID, generated_agenda: str
-    ) -> MeetingFinalized:
-        """
-        Zapisuje wygenerowaną agendę z AI i zamyka cykl życia spotkania (FINALIZED).
-        """
-        pass
+        votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
+        recommendation = cls._build_recommendation(meeting, votes)
+
+        meeting.ai_recommendation = recommendation
+        meeting.status = MeetingStatus.AI_RECOMMENDED.value
+        db.commit()
+        db.refresh(meeting)
+
+        return TriggerAIResponse(
+            id=meeting.id,
+            status=MeetingStatus(meeting.status),
+            ai_recommendation=recommendation,
+        )
+
+    @classmethod
+    def _build_recommendation(cls, meeting: MeetingORM, votes: list[ParticipantVoteORM]) -> str:
+        if not votes:
+            return "Brak glosow uczestnikow. Zaproponuj nowy termin i uruchom zbieranie ponownie."
+
+        proposed_blocks = cls._to_timeblocks(meeting.proposed_blocks)
+        if not proposed_blocks:
+            return "Brak propozycji terminow."
+
+        best_score = -1
+        best_block = proposed_blocks[0]
+
+        for candidate in proposed_blocks:
+            score = 0
+            for vote in votes:
+                available = cls._to_timeblocks(vote.available_blocks)
+                maybe = cls._to_timeblocks(vote.maybe_blocks)
+                if cls._overlaps_any(candidate, available):
+                    score += 2
+                elif cls._overlaps_any(candidate, maybe):
+                    score += 1
+            if score > best_score:
+                best_score = score
+                best_block = candidate
+
+        return (
+            f"Rekomendacja AI: wybierz termin {best_block.start_time.isoformat()} - "
+            f"{best_block.end_time.isoformat()} (score={best_score})."
+        )
+
+    @staticmethod
+    def _overlaps_any(candidate: TimeBlock, blocks: list[TimeBlock]) -> bool:
+        for block in blocks:
+            if candidate.start_time < block.end_time and block.start_time < candidate.end_time:
+                return True
+        return False
+

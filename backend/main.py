@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import os
 from urllib.parse import urlparse
 
@@ -52,6 +55,13 @@ def _get_cors_origins() -> list[str]:
         "http://localhost:8080",
         "http://127.0.0.1:8080",
     ]
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Tworzy brakujace tabele przy starcie aplikacji."""
+    Base.metadata.create_all(bind=engine)
+    yield
 
 app = FastAPI(
     title="HackNaRock API",
