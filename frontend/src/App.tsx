@@ -13,16 +13,16 @@ function App() {
         <Routes>
           {/* Main Dashboard */}
           <Route path="/" element={<Dashboard />} />
-          
+
           {/* Meeting Creation - Organizer Only */}
           <Route path="/create" element={<MeetingCreationWizard />} />
-          
+
           {/* Participation - Public Link */}
           <Route path="/vote/:pollId" element={<ParticipationPage />} />
-          
+
           {/* Results Management */}
           <Route path="/meeting/:meetingId" element={<MeetingManagementResults />} />
-          
+
           {/* Catch-all */}
           <Route path="*" element={<Dashboard />} />
         </Routes>
