@@ -41,6 +41,7 @@ dependencies = [
     { name = "dotenv" },
     { name = "fastapi" },
     { name = "google-genai" },
+    { name = "pydantic" },
     { name = "uvicorn" },
 ]
 
@@ -49,6 +50,7 @@ requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "fastapi", specifier = ">=0.136.0" },
     { name = "google-genai", specifier = ">=1.73.1" },
+    { name = "pydantic", specifier = ">=2.13.2" },
     { name = "uvicorn", specifier = ">=0.44.0" },
 ]
 
