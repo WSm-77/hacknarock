@@ -1,8 +1,14 @@
+import type { DashboardMeeting } from '../../api/integration';
+import { useNavigate } from 'react-router-dom';
+
+const MEETING_POLL_MAPPING_KEY = 'snapslot:meeting-poll-map';
+
 interface ActivePollCard {
   status: string;
   statusClassName: string;
   votes: string;
   title: string;
+  pollId?: string;
   cardClassName: string;
   actionLabel: string;
   actionClassName: string;
@@ -31,13 +37,51 @@ const activePollCards: ActivePollCard[] = [
   },
 ];
 
-export function ActivePollsPanel() {
+interface ActivePollsPanelProps {
+  recentMeetings?: DashboardMeeting[];
+  isLoading?: boolean;
+  openPollCount?: number;
+}
+
+function toCard(meeting: DashboardMeeting): ActivePollCard {
+  const meetingPollMapRaw = sessionStorage.getItem(MEETING_POLL_MAPPING_KEY);
+  const meetingPollMap = meetingPollMapRaw ? JSON.parse(meetingPollMapRaw) as Record<string, string> : {};
+  const isInProgress = meeting.status === 'collecting_votes';
+  const resolvedPollId = meeting.poll_id ?? meetingPollMap[meeting.meeting_id];
+
+  return {
+    status: isInProgress ? 'In Progress' : meeting.status,
+    statusClassName: isInProgress
+      ? 'text-xs font-label uppercase tracking-widest text-primary font-bold'
+      : 'text-xs font-label uppercase tracking-widest text-on-surface-variant/60 font-bold',
+    votes: `${meeting.participants} voted`,
+    title: meeting.title,
+    pollId: resolvedPollId,
+    cardClassName: isInProgress
+      ? 'bg-surface-container-low p-5 rounded-xl border-l-4 border-primary transition-transform hover:translate-x-1 duration-300'
+      : 'bg-surface-container-low p-5 rounded-xl border-l-4 border-outline-variant transition-transform hover:translate-x-1 duration-300',
+    actionLabel: 'View Details',
+    actionClassName: isInProgress
+      ? 'w-full py-2 text-sm font-label font-semibold text-primary hover:bg-primary/5 rounded transition-colors'
+      : 'w-full py-2 text-sm font-label font-semibold text-on-surface-variant hover:bg-surface-variant/50 rounded transition-colors',
+    showAvatars: false,
+  };
+}
+
+export function ActivePollsPanel({ recentMeetings, isLoading = false, openPollCount }: ActivePollsPanelProps) {
+  const navigate = useNavigate();
+  const cards = recentMeetings && recentMeetings.length > 0 ? recentMeetings.map(toCard) : activePollCards;
+
   return (
     <aside className="col-span-12 lg:col-span-3 space-y-8">
       <section>
-        <h2 className="font-serif text-2xl text-on-surface-variant mb-6">Active Polls</h2>
+        <h2 className="font-serif text-2xl text-on-surface-variant mb-2">Active Polls</h2>
+        {openPollCount !== undefined && (
+          <p className="text-xs uppercase tracking-widest text-on-surface-variant/60 mb-4">{openPollCount} open</p>
+        )}
+        {isLoading && <p className="text-sm text-on-surface-variant mb-4">Loading dashboard data...</p>}
         <div className="space-y-4">
-          {activePollCards.map((card) => (
+          {cards.map((card) => (
             <div key={card.title} className={card.cardClassName}>
               <div className="flex justify-between items-start mb-2">
                 <span className={card.statusClassName}>{card.status}</span>
@@ -51,7 +95,18 @@ export function ActivePollsPanel() {
                   <div className="h-7 w-7 rounded-full bg-surface-variant flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-low">+2</div>
                 </div>
               )}
-              <button type="button" className={card.actionClassName}>{card.actionLabel}</button>
+              <button
+                type="button"
+                className={card.actionClassName}
+                disabled={!card.pollId}
+                onClick={() => {
+                  if (card.pollId) {
+                    navigate(`/vote/${card.pollId}`);
+                  }
+                }}
+              >
+                {card.actionLabel}
+              </button>
             </div>
           ))}
         </div>

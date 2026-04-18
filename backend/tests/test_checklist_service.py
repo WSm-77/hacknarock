@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from checklist_service.checklist_service import ChecklistService
+from backend.src.checklist_service.checklist_service import ChecklistService
 
 
 def test_generate_checklist_markdown():

@@ -3,6 +3,10 @@
  *
  * Converted from static HTML into a React component.
  */
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ApiError } from '../api/client';
+import { fetchDashboard, type DashboardResponse } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { ActivePollsPanel } from '../components/dashboard/ActivePollsPanel';
@@ -11,21 +15,63 @@ import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { DashboardLegend } from '../components/dashboard/DashboardLegend';
 
 export function Dashboard() {
+  const navigate = useNavigate();
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadDashboard(): Promise<void> {
+      try {
+        setIsLoading(true);
+        const result = await fetchDashboard();
+        if (!isCancelled) {
+          setDashboard(result);
+          setErrorMessage(null);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          if (error instanceof ApiError) {
+            setErrorMessage(error.detail);
+          } else {
+            setErrorMessage('Could not load dashboard data.');
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const navLinks = [
     {
       label: 'Archive',
+      href: '/',
       className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
     },
     {
       label: 'Study',
+      href: '/login',
       className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
     },
     {
       label: 'Curations',
+      href: '/create',
       className: 'font-serif tracking-tight text-[#56423c] dark:text-[#e3e3dc] opacity-70 hover:text-[#9a4021] transition-colors duration-300 ease-in-out',
     },
     {
       label: 'Schedule',
+      href: '/',
       className: 'font-serif tracking-tight text-[#9a4021] dark:text-[#c96442] font-semibold border-b-2 border-[#9a4021] pb-1',
     },
   ];
@@ -79,16 +125,35 @@ export function Dashboard() {
             <div className="h-8 w-8 rounded-full overflow-hidden border border-outline-variant/30">
               <img alt="User Librarian Profile" data-alt="close-up portrait of a thoughtful man with glasses in a library setting, warm natural lighting, intellectual aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJSfcdnsyAh93F_7fDKt4C-v0mEu97AMS7yUAd_c6JQe-dceNT3cOV9KTGyD82jZYel0GPI7APNE5Wa6IQc9vvaSRXUqF88-NdzWR3JuFgjoX5PTsZdOGLID-AVSKc7MPTPsJsX0Dl-eGFUwzb_fdq6IxLGukLAPBLgN6IIGirgKB6CighGCC6zlD6gj0uO54-VjoUUn6QR46LkEODyp688o1-Qa3ciTUoUHvmd-5ni9IcWUtvumDMb_V-dOTPNpUdHPz5jQsZOVE8" />
             </div>
-            <button type="button" className="bg-primary text-on-primary px-6 py-3 rounded-lg font-label font-medium shadow-sm hover:brightness-110 transition-all scale-95 active:scale-90">New Slot</button>
+            <button
+              type="button"
+              className="bg-primary text-on-primary px-6 py-3 rounded-lg font-label font-medium shadow-sm hover:brightness-110 transition-all scale-95 active:scale-90"
+              onClick={() => navigate('/create')}
+            >
+              New Slot
+            </button>
           </>
         )}
       />
 
       <main className="flex-grow max-w-screen-2xl mx-auto w-full px-8 py-12 grid grid-cols-12 gap-8">
-        <ActivePollsPanel />
+        <ActivePollsPanel
+          isLoading={isLoading}
+          openPollCount={dashboard?.open_polls}
+          recentMeetings={dashboard?.recent_meetings}
+        />
 
         <section className="col-span-12 lg:col-span-9">
-          <DashboardHeader />
+          <DashboardHeader
+            activeMeetings={dashboard?.active_meetings}
+            openPolls={dashboard?.open_polls}
+            upcomingMeetings={dashboard?.upcoming_meetings}
+          />
+          {errorMessage && (
+            <p className="mb-4 rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
+              {errorMessage}
+            </p>
+          )}
           <CalendarBoard />
           <DashboardLegend />
         </section>
@@ -106,7 +171,11 @@ export function Dashboard() {
         description="© 2024 SnapSlot Editorial Archive. All hours curated with intent."
       />
 
-      <button type="button" className="fixed bottom-8 right-8 h-16 w-16 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center lg:hidden hover:scale-110 active:scale-95 transition-all">
+      <button
+        type="button"
+        className="fixed bottom-8 right-8 h-16 w-16 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center lg:hidden hover:scale-110 active:scale-95 transition-all"
+        onClick={() => navigate('/create')}
+      >
         <span className="material-symbols-outlined text-3xl">add</span>
       </button>
     </div>
