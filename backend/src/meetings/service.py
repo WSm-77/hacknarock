@@ -52,7 +52,7 @@ class MeetingService:
         if availability_deadline <= datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Deadline musi byc w przyszlosci",
+                detail="Deadline must be in the future.",
             )
 
         meeting = MeetingORM(
@@ -78,20 +78,20 @@ class MeetingService:
     ) -> MeetingResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
         if not meeting:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting does not exist.")
         if meeting.organizer_id != organizer.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
         cls._touch_deadline_transition(meeting)
         if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Nie mozna edytowac po zakonczeniu zbierania dostepnosci",
+                detail="Cannot edit after availability collection has finished.",
             )
         if availability_deadline <= datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Deadline musi byc w przyszlosci",
+                detail="Deadline must be in the future.",
             )
 
         meeting.proposed_blocks = cls._serialize_timeblocks(proposed_blocks)
@@ -104,9 +104,9 @@ class MeetingService:
     def get_meeting_for_organizer(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> MeetingDetailsResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
         if not meeting:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting does not exist.")
         if meeting.organizer_id != organizer.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
         changed = cls._touch_deadline_transition(meeting)
         if changed:
@@ -127,7 +127,7 @@ class MeetingService:
     ) -> MeetingResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.public_token == public_token).first()
         if not meeting:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieprawidlowy link")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid link.")
 
         changed = cls._touch_deadline_transition(meeting)
         if changed:
@@ -137,7 +137,7 @@ class MeetingService:
         if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Zbieranie dostepnosci jest zakonczone",
+                detail="Availability collection is closed.",
             )
 
         vote = (
@@ -162,9 +162,9 @@ class MeetingService:
     def trigger_ai_recommendation(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> TriggerAIResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
         if not meeting:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting does not exist.")
         if meeting.organizer_id != organizer.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
         changed = cls._touch_deadline_transition(meeting)
         if changed:
@@ -174,7 +174,7 @@ class MeetingService:
         if meeting.status != MeetingStatus.READY_FOR_AI.value:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="AI mozna uruchomic dopiero po zakonczeniu zbierania dostepnosci",
+                detail="AI can only be triggered after availability collection has finished.",
             )
 
         votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
@@ -194,11 +194,11 @@ class MeetingService:
     @classmethod
     def _build_recommendation(cls, meeting: MeetingORM, votes: list[ParticipantVoteORM]) -> str:
         if not votes:
-            return "Brak glosow uczestnikow. Zaproponuj nowy termin i uruchom zbieranie ponownie."
+            return "No participant votes were found. Propose a new time and restart availability collection."
 
         proposed_blocks = cls._to_timeblocks(meeting.proposed_blocks)
         if not proposed_blocks:
-            return "Brak propozycji terminow."
+            return "No proposed time windows were found."
 
         best_score = -1
         best_block = proposed_blocks[0]
@@ -217,7 +217,7 @@ class MeetingService:
                 best_block = candidate
 
         return (
-            f"Rekomendacja AI: wybierz termin {best_block.start_time.isoformat()} - "
+            f"AI recommendation: choose the time window {best_block.start_time.isoformat()} - "
             f"{best_block.end_time.isoformat()} (score={best_score})."
         )
 
