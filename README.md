@@ -1,40 +1,40 @@
-# Kalendarz
+# HackNaRock - Team Meeting Scheduler
 
-Projekt do planowania spotkan zespolowych: od zbierania dostepnosci i zainteresowania terminami, przez automatyczny wybor najlepszego terminu, az po wygenerowanie agendy i szkicu maila rezerwacyjnego.
+A project for planning team meetings: from gathering availability and interest in time slots, through automatic selection of the best time, to generating an agenda and drafting a reservation email.
 
-## Funkcjonalnosci
+## Features
 
-- zwykly kalendarz z zaakceptowanymi terminami
-- kalendarz do dodawania zainteresowania terminami dla poszczegolnych wydarzen
-- algorytm dopasowujacy zainteresowanie do dostepnosci i akceptujacy terminy
-- algorytm wyszukujacy miejsce spotkania i tworzacy maila do rezerwacji miejsca
-- algorytm tworzacy agende na bazie eventu
+- Regular calendar with accepted meeting times
+- Calendar for adding interest in time slots for specific events
+- Algorithm matching interest to availability and accepting time slots
+- Algorithm searching for meeting venues and creating reservation emails
+- Algorithm generating agendas based on events
 
-## Plan realizacji
+## Implementation Plan
 
-### Krok 1
-Postawienie zwyklego kalendarza z eventami do zaakceptowania.
+### Step 1
+Set up a regular calendar with events to be accepted.
 
-### Krok 2
-Implementacja algorytmu dopasowania zainteresowania do eventow i akceptowania terminow.
+### Step 2
+Implement algorithm matching interest to events and accepting time slots.
 
-### Krok 3
-Implementacja algorytmu do tworzenia agendy na bazie eventu.
+### Step 3
+Implement algorithm for generating agendas based on events.
 
-### Krok 4
-Implementacja algorytmu do wyszukiwania miejsca spotkania i tworzenia maila do rezerwacji miejsca.
+### Step 4
+Implement algorithm for searching meeting venues and creating reservation emails.
 
-## Flow
+## Workflow
 
-1. Organizator udostepnia swoja dostepnosc.
-2. Uczestnicy zglaszaja zainteresowanie terminami.
-3. Algorytm dopasowuje zainteresowanie do dostepnosci i akceptuje terminy (algorytm zachlanny).
-4. AI wyszukuje miejsce spotkania i tworzy maila do rezerwacji miejsca.
+1. Organizer shares their availability.
+2. Participants express interest in time slots.
+3. Algorithm matches interest to availability and accepts time slots (greedy algorithm).
+4. AI searches for a meeting venue and creates a reservation email.
 
-## Cel projektu
+## Project Goal
 
-Celem projektu jest skrocenie czasu potrzebnego na organizacje spotkan zespolowych i ograniczenie pracy manualnej przy:
+The goal of this project is to reduce the time needed to organize team meetings and minimize manual work on:
 
-- wyborze terminu,
-- przygotowaniu agendy,
-- rezerwacji miejsca.
+- Time slot selection,
+- Agenda preparation,
+- Venue reservation.
