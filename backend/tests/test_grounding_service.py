@@ -4,8 +4,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from grounding_service.grounding_service import GroundingService
-from grounding_service.user import User
+from backend.src.grounding_service.grounding_service import GroundingService
+from backend.src.grounding_service.user import User
 
 
 def test_krakow_meeting_service():
@@ -58,7 +58,7 @@ def test_krakow_meeting_service():
 
         print("\nGoogle Maps grounded recommendations (JSON):")
         print(json.dumps(result, indent=2, ensure_ascii=False))
-            
+
     except Exception as e:
         print(f"\nTest failed: {e}")
         print("\nChecklist:")

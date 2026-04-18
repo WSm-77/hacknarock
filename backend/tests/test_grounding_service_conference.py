@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from grounding_service.grounding_service import GroundingService
+from backend.src.grounding_service.grounding_service import GroundingService
 
 
 def test_conference_meeting_for_50_people():

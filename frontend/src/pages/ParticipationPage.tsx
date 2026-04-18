@@ -3,31 +3,83 @@
  *
  * Converted from the provided mixed HTML/template content into a React component.
  */
+import type { FormEvent } from 'react';
+import { useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
 import { ParticipationActions } from '../components/participation/ParticipationActions';
 import { ParticipationCurationSection } from '../components/participation/ParticipationCurationSection';
 import { ParticipationEssentialsSection } from '../components/participation/ParticipationEssentialsSection';
 import { ParticipationHeader } from '../components/participation/ParticipationHeader';
+import { PollParticipationCard } from '../components/participation/PollParticipationCard';
 import { ParticipationSummarySidebar } from '../components/participation/ParticipationSummarySidebar';
 import { ParticipationTemporalSection } from '../components/participation/ParticipationTemporalSection';
+import { ShareLinkBanner } from '../components/participation/ShareLinkBanner';
+import { usePollParticipation } from '../hooks/usePollParticipation';
 
 export function ParticipationPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { pollId } = useParams<{ pollId: string }>();
+  const {
+    poll,
+    selectedOptionId,
+    setSelectedOptionId,
+    voterId,
+    setVoterId,
+    isLoading,
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    submitVote,
+  } = usePollParticipation({ pollId });
+  const [didCopyShareLink, setDidCopyShareLink] = useState(false);
+
+  const stateShareLink = (location.state as { createdShareLink?: string } | null)?.createdShareLink;
+  const persistedShareLink = sessionStorage.getItem('snapslot:last-created-share-link');
+  const candidateShareLink = stateShareLink ?? persistedShareLink;
+  const shareLink = candidateShareLink && pollId && candidateShareLink.endsWith(`/vote/${pollId}`)
+    ? candidateShareLink
+    : null;
+
+  async function handleVoteSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    await submitVote();
+  }
+
+  async function handleCopyShareLink(): Promise<void> {
+    if (!shareLink) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setDidCopyShareLink(true);
+    } catch {
+      setDidCopyShareLink(false);
+    }
+  }
+
   const navLinks = [
     {
       label: 'Dashboard',
+      href: '/',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
     {
       label: 'Meetings',
+      href: '/',
       className: 'text-[#9a4021] font-semibold border-b-2 border-[#9a4021] pb-1 transition-all duration-300',
     },
     {
       label: 'Availability',
+      href: '/create',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
     {
       label: 'Archives',
+      href: '/login',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
   ];
@@ -72,13 +124,36 @@ export function ParticipationPage() {
         actionArea={(
           <>
             <button type="button" className="px-6 py-2.5 text-stone-600 hover:bg-stone-100/50 rounded-lg transition-all duration-300">Help</button>
-            <button type="button" className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-medium shadow-sm hover:bg-primary-container transition-all duration-300">Create New</button>
+            <button
+              type="button"
+              className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-medium shadow-sm hover:bg-primary-container transition-all duration-300"
+              onClick={() => navigate('/create')}
+            >
+              Create New
+            </button>
           </>
         )}
       />
 
       <main className="max-w-6xl mx-auto px-8 py-16">
         <ParticipationHeader />
+
+        {shareLink && (
+          <ShareLinkBanner didCopy={didCopyShareLink} onCopy={() => void handleCopyShareLink()} shareLink={shareLink} />
+        )}
+
+        <PollParticipationCard
+          errorMessage={errorMessage}
+          isLoading={isLoading}
+          isSubmitting={isSubmitting}
+          onSelectOption={setSelectedOptionId}
+          onSubmit={handleVoteSubmit}
+          onVoterChange={setVoterId}
+          poll={poll}
+          selectedOptionId={selectedOptionId}
+          successMessage={successMessage}
+          voterId={voterId}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-8 space-y-24">

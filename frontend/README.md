@@ -71,3 +71,17 @@ export default defineConfig([
   },
 ])
 ```
+
+## API Configuration
+
+Frontend API calls use `VITE_API_BASE_URL` as the single base URL source.
+
+- If `VITE_API_BASE_URL` is set, that value is used.
+- If not set, the app defaults to `http://localhost:8000` when opened from localhost.
+- On non-localhost hosts, it defaults to `<current-protocol>//<current-host>:8000`.
+
+Example:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+```

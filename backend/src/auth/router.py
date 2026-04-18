@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from auth.models import UserCreate, UserLogin, UserResponse
-from auth.service import UserService
-from db import get_db
+from ..database.models import UserORM
+from ..database.session import get_db
+from .dependencies import get_current_user
+from .models import LoginResponse, UserCreate, UserLogin, UserResponse
+from .service import UserService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -33,21 +35,26 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post(
     "/login",
-    response_model=UserResponse,
+    response_model=LoginResponse,
     summary="Logowanie użytkownika",
-    description="Weryfikuje email i hasło, zwracając dane użytkownika przy poprawnych danych.",
+    description="Weryfikuje email i haslo i zwraca token bearer oraz dane uzytkownika.",
     responses={
         401: {"description": "Nieprawidłowy email lub hasło"},
     },
 )
 def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    """Proste logowanie weryfikujące hasło i zwracające dane użytkownika."""
-    user = UserService.authenticate_user(db, user_credentials)
+    """Logowanie i wydanie tokenu sesyjnego."""
+    auth_data = UserService.login(db, user_credentials)
 
-    if not user:
+    if not auth_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Nieprawidłowy email lub hasło",
         )
 
-    return user
+    return auth_data
+
+
+@router.get("/me", response_model=UserResponse, summary="Zwraca aktualnie zalogowanego uzytkownika")
+def me(current_user: UserORM = Depends(get_current_user)):
+    return current_user

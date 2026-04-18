@@ -3,22 +3,58 @@
  *
  * Converted from the provided HTML template.
  */
+import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
+import { CreateSuccessPanel } from '../components/meeting-wizard/CreateSuccessPanel';
 import { WizardActions } from '../components/meeting-wizard/WizardActions';
 import { WizardCurationSection } from '../components/meeting-wizard/WizardCurationSection';
 import { WizardEssentialsSection } from '../components/meeting-wizard/WizardEssentialsSection';
 import { WizardHeader } from '../components/meeting-wizard/WizardHeader';
 import { WizardTimingSection } from '../components/meeting-wizard/WizardTimingSection';
+import { useCreateMeeting } from '../hooks/useCreateMeeting';
 
 export function MeetingCreationWizard() {
+  const navigate = useNavigate();
+  const {
+    isSubmitting,
+    errorMessage,
+    successMessage,
+    shareLink,
+    didCopy,
+    submitMeeting,
+    copyLink,
+  } = useCreateMeeting({
+    onCreated: (pollId, createdShareLink) => {
+      navigate(`/vote/${pollId}`, {
+        state: {
+          createdShareLink,
+        },
+      });
+    },
+  });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const title = String(formData.get('meeting-title') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+    await submitMeeting(title, description || undefined);
+  }
+
   const navLinks = [
     {
       label: 'Dashboard',
+      href: '/',
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
     {
       label: 'My Polls',
+      href: '/',
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
   ];
@@ -68,7 +104,13 @@ export function MeetingCreationWizard() {
         navClassName="hidden md:flex gap-6 items-center"
         navListClassName="hidden md:flex gap-6 items-center"
         actionArea={(
-          <button type="button" className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2">Create New</button>
+          <button
+            type="button"
+            className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
+            onClick={() => navigate('/create')}
+          >
+            Create New
+          </button>
         )}
       />
 
@@ -86,11 +128,24 @@ export function MeetingCreationWizard() {
             </svg>
           </div>
 
-          <form className="space-y-16 relative z-10">
+          <form className="space-y-16 relative z-10" onSubmit={handleSubmit}>
             <WizardEssentialsSection />
             <WizardTimingSection />
             <WizardCurationSection />
-            <WizardActions />
+            {errorMessage && (
+              <p className="rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
+                {errorMessage}
+              </p>
+            )}
+            {successMessage && (
+              <CreateSuccessPanel
+                didCopy={didCopy}
+                onCopy={() => void copyLink()}
+                shareLink={shareLink}
+                successMessage={successMessage}
+              />
+            )}
+            <WizardActions isSubmitting={isSubmitting} />
           </form>
         </div>
       </main>
