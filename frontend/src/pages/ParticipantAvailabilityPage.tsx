@@ -45,7 +45,7 @@ function toApiDate(value: string): string {
   return new Date(value).toISOString();
 }
 
-function isOpenForSubmission(status: 'collecting_availability' | 'ready_for_ai' | 'ai_recommended'): boolean {
+function isCollectingAvailability(status: 'collecting_availability' | 'ready_for_ai' | 'ai_recommended'): boolean {
   return status === 'collecting_availability';
 }
 
@@ -146,7 +146,7 @@ export function ParticipantAvailabilityPage() {
         },
       });
 
-      const isOpen = isOpenForSubmission(response.status);
+      const isOpen = isCollectingAvailability(response.status);
       if (!isOpen) {
         setIsClosed(true);
       }
