@@ -5,7 +5,7 @@ from typing import cast
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from auth.models import AuthSessionORM, LoginResponse, UserCreate, UserLogin, UserORM
+from .models import AuthSessionORM, LoginResponse, UserCreate, UserLogin, UserORM
 
 # `bcrypt` bywa problematyczny przy niektórych wersjach backendu i limicie 72 bajtów.
 # pbkdf2_sha256 jest stabilny i nie ma tego ograniczenia.
