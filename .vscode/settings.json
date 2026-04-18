@@ -1,0 +1,25 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 55432,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "name": "hackcnarock ",
+            "database": "hacknarock_testdb",
+            "username": "hacknarock_test_user"
+        },
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 55432,
+            "driver": "PostgreSQL",
+            "database": "hacknarock_testdb",
+            "username": "hacknarock_test_user",
+            "name": "hacknarock"
+        }
+    ]
+}
