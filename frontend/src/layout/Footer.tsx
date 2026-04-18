@@ -1,6 +1,6 @@
 /**
  * Footer Component
- * 
+ *
  * Shared footer for all pages.
  * Contains product messaging and links.
  */
@@ -11,7 +11,7 @@ export function Footer() {
       <div className="footer-container">
         <div className="footer-content">
           <div className="footer-section">
-            <h3>HackNaRock</h3>
+            <h3>SnapSlot</h3>
             <p>Schedule team meetings faster with automated time-slot matching.</p>
           </div>
 
@@ -33,7 +33,7 @@ export function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; 2026 HackNaRock. Built for teams that value their time.</p>
+          <p>&copy; 2026 SnapSlot. Built for teams that value their time.</p>
         </div>
       </div>
     </footer>

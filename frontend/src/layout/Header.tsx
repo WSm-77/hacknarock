@@ -1,6 +1,6 @@
 /**
  * Header Component
- * 
+ *
  * Shared navigation header for all pages.
  * Includes product logo, nav links, and role switcher.
  */
@@ -13,7 +13,7 @@ export function Header() {
       <div className="header-container">
         <div className="header-brand">
           <Link to="/" className="logo">
-            <span className="logo-text">HackNaRock</span>
+            <span className="logo-text">SnapSlot</span>
           </Link>
         </div>
 
