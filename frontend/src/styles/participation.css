@@ -1,0 +1,209 @@
+/* Participation Page */
+.participation-page {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.participation-header {
+  margin-bottom: 2rem;
+}
+
+.participation-header h1 {
+  font-size: 2rem;
+  color: #141413;
+  margin: 0 0 0.5rem;
+}
+
+.participation-header p {
+  color: #5e5d59;
+  margin: 0;
+}
+
+.participation-container {
+  display: grid;
+  gap: 2rem;
+}
+
+/* Poll Info Card */
+.poll-info {
+  margin-bottom: 1rem;
+}
+
+.info-card {
+  background: #faf9f5;
+  border: 1px solid #f0eee6;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.info-card h2 {
+  font-size: 1.1rem;
+  color: #141413;
+  margin: 0 0 1rem;
+}
+
+.info-details {
+  display: grid;
+  gap: 1rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0eee6;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.info-row .label {
+  font-weight: 500;
+  color: #141413;
+  font-size: 0.9rem;
+}
+
+.info-row .value {
+  color: #5e5d59;
+  font-size: 0.9rem;
+}
+
+/* Participant Section */
+.participant-section {
+  background: #faf9f5;
+  border: 1px solid #f0eee6;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.participant-section h2 {
+  font-size: 1.1rem;
+  color: #141413;
+  margin: 0 0 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #141413;
+}
+
+.form-group input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #f0eee6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #141413;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3898ec;
+  box-shadow: 0px 0px 0px 2px rgba(56, 152, 236, 0.1);
+}
+
+/* Interest Section */
+.interest-section {
+  background: #faf9f5;
+  border: 1px solid #f0eee6;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.interest-section h2 {
+  font-size: 1.1rem;
+  color: #141413;
+  margin: 0 0 0.5rem;
+}
+
+.section-description {
+  color: #5e5d59;
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Progress Section */
+.progress-section {
+  background: #faf9f5;
+  border: 1px solid #f0eee6;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.progress-section h3 {
+  font-size: 1rem;
+  color: #141413;
+  margin: 0 0 1rem;
+}
+
+.progress-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.progress-label {
+  font-size: 0.9rem;
+  color: #5e5d59;
+  margin: 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e8e6dc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #c96442;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  color: #87867f;
+  margin: 0;
+}
+
+/* Participation Actions */
+.participation-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
