@@ -20,6 +20,14 @@ export interface CreateMeetingPayload {
   title: string;
   description?: string;
   organizer_name?: string;
+  is_draft?: boolean;
+  duration_minutes?: number;
+  location?: string;
+  participants_count?: number;
+  expiration?: string;
+  auto_venue?: boolean;
+  venue_recommendations_count?: number;
+  proposed_blocks?: Array<{ day: string; time: string }>;
 }
 
 export interface CreateMeetingResponse {

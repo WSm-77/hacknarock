@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -25,6 +25,14 @@ class CreateMeetingRequestDTO(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     organizer_name: str | None = Field(default=None, max_length=120)
+    is_draft: bool = Field(default=False)
+    duration_minutes: int | None = Field(default=None, ge=15, le=1440)
+    location: str | None = Field(default=None, max_length=255)
+    participants_count: int | None = Field(default=None, ge=1, le=100000)
+    expiration: date | None = Field(default=None)
+    auto_venue: bool = Field(default=False)
+    venue_recommendations_count: int | None = Field(default=None, ge=1, le=50)
+    proposed_blocks: list[dict[str, str]] = Field(default_factory=list)
 
 
 class CreateMeetingResponseDTO(BaseModel):
