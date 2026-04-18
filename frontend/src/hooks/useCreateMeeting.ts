@@ -36,6 +36,11 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
     title: string,
     description?: string,
     duration?: number,
+    location?: string,
+    participantsCount?: number,
+    expiration?: string,
+    autoVenue?: boolean,
+    venueRecommendationsCount?: number,
     proposedBlocks?: Array<{ day: string; time: string }>,
   ): Promise<void> {
     if (!title.trim()) {
@@ -52,6 +57,11 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
         title: title.trim(),
         description: description?.trim() || undefined,
         duration_minutes: duration || undefined,
+        location: location?.trim() || undefined,
+        participants_count: participantsCount || undefined,
+        expiration: expiration || undefined,
+        auto_venue: !!autoVenue,
+        venue_recommendations_count: venueRecommendationsCount || undefined,
         proposed_blocks: proposedBlocks || [],
       });
 

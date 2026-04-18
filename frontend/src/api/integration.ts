@@ -21,6 +21,11 @@ export interface CreateMeetingPayload {
   description?: string;
   organizer_name?: string;
   duration_minutes?: number;
+  location?: string;
+  participants_count?: number;
+  expiration?: string;
+  auto_venue?: boolean;
+  venue_recommendations_count?: number;
   proposed_blocks?: Array<{ day: string; time: string }>;
 }
 

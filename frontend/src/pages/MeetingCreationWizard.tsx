@@ -46,18 +46,34 @@ export function MeetingCreationWizard() {
 
     const title = String(formData.get('meeting-title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
-    await submitMeeting(title, description || undefined);
-  }
+    const duration = String(formData.get('duration') ?? '').trim() || null;
+    const location = String(formData.get('location') ?? '').trim() || null;
+    const participantsRaw = String(formData.get('participants') ?? '').trim() || null;
+    const expiration = String(formData.get('expiration') ?? '').trim() || null;
+    const autoVenue = formData.get('auto-venue') === 'on';
+    const venueRecommendationsRaw = String(formData.get('venue-recommendations-count') ?? '').trim() || null;
+    const proposedBlocksRaw = String(formData.get('proposed-blocks') ?? '');
 
-  async function handleLogout(): Promise<void> {
+    let proposedBlocks: Array<{ day: string; time: string }> = [];
     try {
-      await logout();
-    } catch {
-      // Best effort revoke; local logout must always succeed.
+      if (proposedBlocksRaw) {
+        proposedBlocks = JSON.parse(proposedBlocksRaw);
+      }
+    } catch (e) {
+      console.error('Failed to parse proposed blocks:', e);
     }
 
-    clearAuthSession();
-    navigate('/login', { replace: true });
+    await submitMeeting(
+      title,
+      description || undefined,
+      duration ? parseInt(duration, 10) : undefined,
+      location || undefined,
+      participantsRaw ? parseInt(participantsRaw, 10) : undefined,
+      expiration || undefined,
+      autoVenue,
+      venueRecommendationsRaw ? parseInt(venueRecommendationsRaw, 10) : undefined,
+      proposedBlocks,
+    );
   }
 
   const navLinks = [
