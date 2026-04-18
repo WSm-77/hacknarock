@@ -4,7 +4,8 @@
  * Converted from the provided HTML template.
  */
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { createMeeting } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
@@ -16,9 +17,35 @@ import { WizardHeader } from '../components/meeting-wizard/WizardHeader';
 import { WizardTimingSection } from '../components/meeting-wizard/WizardTimingSection';
 
 export function MeetingCreationWizard() {
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [didCopy, setDidCopy] = useState(false);
+
+  useEffect(() => {
+    if (!successMessage || !shareLink) {
+      return;
+    }
+
+    const pollId = shareLink.split('/').at(-1);
+    if (!pollId) {
+      return;
+    }
+
+    const redirectTimeout = window.setTimeout(() => {
+      navigate(`/vote/${pollId}`, {
+        state: {
+          createdShareLink: shareLink,
+        },
+      });
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(redirectTimeout);
+    };
+  }, [navigate, shareLink, successMessage]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -44,6 +71,17 @@ export function MeetingCreationWizard() {
         description: description || undefined,
       });
 
+      const nextShareLink = `${window.location.origin}/vote/${response.poll_id}`;
+      const meetingPollMapRaw = sessionStorage.getItem('snapslot:meeting-poll-map');
+      const meetingPollMap = meetingPollMapRaw ? JSON.parse(meetingPollMapRaw) as Record<string, string> : {};
+      meetingPollMap[response.meeting_id] = response.poll_id;
+
+      sessionStorage.setItem('snapslot:meeting-poll-map', JSON.stringify(meetingPollMap));
+      sessionStorage.setItem('snapslot:last-created-share-link', nextShareLink);
+
+      setShareLink(nextShareLink);
+      setDidCopy(false);
+
       setSuccessMessage(`${response.message} Poll ID: ${response.poll_id}`);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -52,18 +90,36 @@ export function MeetingCreationWizard() {
         setErrorMessage('Failed to create meeting. Please try again.');
       }
       setSuccessMessage(null);
+      setShareLink(null);
+      setDidCopy(false);
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleCopyLink(): Promise<void> {
+    if (!shareLink) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setDidCopy(true);
+    } catch {
+      setDidCopy(false);
+      setErrorMessage('Unable to copy automatically. Please copy the link manually.');
     }
   }
 
   const navLinks = [
     {
       label: 'Dashboard',
+      href: '/',
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
     {
       label: 'My Polls',
+      href: '/',
       className: 'text-[#56423c] font-sans text-sm hover:text-[#9a4021] transition-colors duration-300',
     },
   ];
@@ -113,7 +169,13 @@ export function MeetingCreationWizard() {
         navClassName="hidden md:flex gap-6 items-center"
         navListClassName="hidden md:flex gap-6 items-center"
         actionArea={(
-          <button type="button" className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2">Create New</button>
+          <button
+            type="button"
+            className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
+            onClick={() => navigate('/create')}
+          >
+            Create New
+          </button>
         )}
       />
 
@@ -141,9 +203,29 @@ export function MeetingCreationWizard() {
               </p>
             )}
             {successMessage && (
-              <p className="rounded-lg border border-green-700/20 bg-green-700/5 px-4 py-3 text-sm text-green-800">
-                {successMessage}
-              </p>
+              <div className="space-y-3 rounded-lg border border-green-700/20 bg-green-700/5 px-4 py-3 text-sm text-green-800">
+                <p>{successMessage}</p>
+                {shareLink && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-green-900/80">Share this poll link</p>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                      <input
+                        className="w-full rounded-md border border-green-900/20 bg-white/80 px-3 py-2 text-xs text-green-900"
+                        readOnly
+                        value={shareLink}
+                      />
+                      <button
+                        type="button"
+                        className="rounded-md bg-green-800 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
+                        onClick={() => void handleCopyLink()}
+                      >
+                        {didCopy ? 'Copied' : 'Copy Link'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-green-900/70">Redirecting to voting page...</p>
+                  </div>
+                )}
+              </div>
             )}
             <WizardActions isSubmitting={isSubmitting} />
           </form>

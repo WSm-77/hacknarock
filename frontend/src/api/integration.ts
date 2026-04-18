@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 
 export interface DashboardMeeting {
   meeting_id: string;
+  poll_id?: string;
   title: string;
   status: string;
   participants: number;

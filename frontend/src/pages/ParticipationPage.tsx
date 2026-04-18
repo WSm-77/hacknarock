@@ -5,7 +5,7 @@
  */
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { fetchPoll, submitPollVote, type PollResponse } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
@@ -18,6 +18,8 @@ import { ParticipationSummarySidebar } from '../components/participation/Partici
 import { ParticipationTemporalSection } from '../components/participation/ParticipationTemporalSection';
 
 export function ParticipationPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { pollId } = useParams<{ pollId: string }>();
   const [poll, setPoll] = useState<PollResponse | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState('');
@@ -26,6 +28,14 @@ export function ParticipationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [didCopyShareLink, setDidCopyShareLink] = useState(false);
+
+  const stateShareLink = (location.state as { createdShareLink?: string } | null)?.createdShareLink;
+  const persistedShareLink = sessionStorage.getItem('snapslot:last-created-share-link');
+  const candidateShareLink = stateShareLink ?? persistedShareLink;
+  const shareLink = candidateShareLink && pollId && candidateShareLink.endsWith(`/vote/${pollId}`)
+    ? candidateShareLink
+    : null;
 
   useEffect(() => {
     let isCancelled = false;
@@ -101,21 +111,39 @@ export function ParticipationPage() {
     }
   }
 
+  async function handleCopyShareLink(): Promise<void> {
+    if (!shareLink) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setDidCopyShareLink(true);
+    } catch {
+      setDidCopyShareLink(false);
+      setErrorMessage('Unable to copy share link automatically.');
+    }
+  }
+
   const navLinks = [
     {
       label: 'Dashboard',
+      href: '/',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
     {
       label: 'Meetings',
+      href: '/',
       className: 'text-[#9a4021] font-semibold border-b-2 border-[#9a4021] pb-1 transition-all duration-300',
     },
     {
       label: 'Availability',
+      href: '/create',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
     {
       label: 'Archives',
+      href: '/login',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
   ];
@@ -160,13 +188,39 @@ export function ParticipationPage() {
         actionArea={(
           <>
             <button type="button" className="px-6 py-2.5 text-stone-600 hover:bg-stone-100/50 rounded-lg transition-all duration-300">Help</button>
-            <button type="button" className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-medium shadow-sm hover:bg-primary-container transition-all duration-300">Create New</button>
+            <button
+              type="button"
+              className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-medium shadow-sm hover:bg-primary-container transition-all duration-300"
+              onClick={() => navigate('/create')}
+            >
+              Create New
+            </button>
           </>
         )}
       />
 
       <main className="max-w-6xl mx-auto px-8 py-16">
         <ParticipationHeader />
+
+        {shareLink && (
+          <section className="mb-8 rounded-xl border border-green-700/20 bg-green-700/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-green-900/80">Share link for this poll</p>
+            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+              <input
+                className="w-full rounded-md border border-green-900/20 bg-white/80 px-3 py-2 text-xs text-green-900"
+                readOnly
+                value={shareLink}
+              />
+              <button
+                type="button"
+                className="rounded-md bg-green-800 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
+                onClick={() => void handleCopyShareLink()}
+              >
+                {didCopyShareLink ? 'Copied' : 'Copy Link'}
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="mb-12 rounded-xl border border-outline-variant/20 bg-surface-container-low p-6">
           <h2 className="font-serif text-2xl text-on-surface mb-3">Poll Participation</h2>

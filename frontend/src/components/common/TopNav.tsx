@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 interface TopNavLink {
   label: string;
@@ -32,6 +33,30 @@ export function TopNav({
   navListClassName,
   actionArea,
 }: TopNavProps) {
+  function renderNavLink(link: TopNavLink) {
+    if (link.href?.startsWith('/')) {
+      return (
+        <Link
+          key={link.label}
+          className={link.className}
+          to={link.href}
+        >
+          {link.label}
+        </Link>
+      );
+    }
+
+    return (
+      <a
+        key={link.label}
+        className={link.className}
+        href={link.href ?? '#'}
+      >
+        {link.label}
+      </a>
+    );
+  }
+
   return (
     <header className={className}>
       <div className={containerClassName}>
@@ -40,15 +65,7 @@ export function TopNav({
           {links.length > 0 && (
             <nav className={navClassName}>
               <div className={navListClassName}>
-                {links.map((link) => (
-                  <a
-                    key={link.label}
-                    className={link.className}
-                    href={link.href ?? '#'}
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {links.map(renderNavLink)}
               </div>
             </nav>
           )}
