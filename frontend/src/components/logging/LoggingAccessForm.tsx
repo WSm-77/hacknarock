@@ -3,9 +3,10 @@ import { LoggingField } from './LoggingField';
 
 interface LoggingAccessFormProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting: boolean;
 }
 
-export function LoggingAccessForm({ onSubmit }: LoggingAccessFormProps) {
+export function LoggingAccessForm({ onSubmit, isSubmitting }: LoggingAccessFormProps) {
   return (
     <form className="logging-form" onSubmit={onSubmit}>
       <LoggingField
@@ -26,8 +27,8 @@ export function LoggingAccessForm({ onSubmit }: LoggingAccessFormProps) {
         autoComplete="current-password"
       />
 
-      <button className="logging-submit" type="submit">
-        <span>Enter</span>
+      <button className="logging-submit" type="submit" disabled={isSubmitting}>
+        <span>{isSubmitting ? 'Entering…' : 'Enter'}</span>
         <span className="logging-symbol material-symbols-outlined" aria-hidden="true">
           arrow_forward
         </span>

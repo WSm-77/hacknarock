@@ -1,3 +1,5 @@
+import { getAccessToken } from '../auth/session';
+
 const DEFAULT_LOCAL_API_BASE_URL = 'http://localhost:8000';
 
 function normalizeBaseUrl(url: string): string {
@@ -56,11 +58,15 @@ export async function apiFetch<TResponse>(
   path: string,
   init?: RequestInit,
 ): Promise<TResponse> {
+  const accessToken = getAccessToken();
+  const authorizationHeader = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...authorizationHeader,
       ...init?.headers,
     },
   });

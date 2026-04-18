@@ -5,6 +5,7 @@
 @import './styles/wizard.css';
 @import './styles/participation.css';
 @import './styles/results.css';
+@import './styles/availability.css';
 
 :root {
   /* Claude Design System - Warm Palette */
