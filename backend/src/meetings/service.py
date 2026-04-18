@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta
 from uuid import UUID
 import secrets
 
@@ -31,15 +32,28 @@ class MeetingService:
             ai_recommendation=meeting.ai_recommendation,
         )
 
-    @staticmethod
-    def _touch_deadline_transition(meeting: MeetingORM) -> bool:
-        if (
-            meeting.status == MeetingStatus.COLLECTING_AVAILABILITY.value
-            and datetime.utcnow() >= meeting.availability_deadline
-        ):
-            meeting.status = MeetingStatus.READY_FOR_AI.value
-            return True
-        return False
+    @classmethod
+    def _touch_deadline_transition(cls, db: Session, meeting: MeetingORM) -> bool:
+        if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
+            return False
+        if datetime.utcnow() < meeting.availability_deadline:
+            return False
+
+        votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
+        best_interval = cls._select_best_continuous_interval(votes)
+
+        if best_interval is None:
+            meeting.choosen_blocks = []
+        else:
+            meeting.choosen_blocks = cls._serialize_timeblocks(
+                [cls._fit_interval_to_duration(best_interval, meeting.duration_minutes)]
+            )
+
+        meeting.ai_recommendation = None
+        meeting.status = MeetingStatus.AI_RECOMMENDED.value
+        db.commit()
+        db.refresh(meeting)
+        return True
 
     @classmethod
     def create_meeting(
@@ -82,7 +96,7 @@ class MeetingService:
         if meeting.organizer_id != organizer.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
 
-        cls._touch_deadline_transition(meeting)
+        cls._touch_deadline_transition(db, meeting)
         if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -108,10 +122,7 @@ class MeetingService:
         if meeting.organizer_id != organizer.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
 
-        changed = cls._touch_deadline_transition(meeting)
-        if changed:
-            db.commit()
-            db.refresh(meeting)
+        cls._touch_deadline_transition(db, meeting)
 
         votes_count = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).count()
         data = cls._meeting_response(meeting)
@@ -129,10 +140,7 @@ class MeetingService:
         if not meeting:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieprawidlowy link")
 
-        changed = cls._touch_deadline_transition(meeting)
-        if changed:
-            db.commit()
-            db.refresh(meeting)
+        cls._touch_deadline_transition(db, meeting)
 
         if meeting.status != MeetingStatus.COLLECTING_AVAILABILITY.value:
             raise HTTPException(
@@ -153,7 +161,6 @@ class MeetingService:
             db.add(vote)
 
         vote.available_blocks = cls._serialize_timeblocks(availability.available_blocks)
-        vote.maybe_blocks = cls._serialize_timeblocks(availability.maybe_blocks)
         db.commit()
         db.refresh(meeting)
         return cls._meeting_response(meeting)
@@ -166,10 +173,14 @@ class MeetingService:
         if meeting.organizer_id != organizer.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
 
-        changed = cls._touch_deadline_transition(meeting)
-        if changed:
-            db.commit()
-            db.refresh(meeting)
+        cls._touch_deadline_transition(db, meeting)
+
+        if meeting.status == MeetingStatus.AI_RECOMMENDED.value:
+            return TriggerAIResponse(
+                id=meeting.id,
+                status=MeetingStatus(meeting.status),
+                ai_recommendation=cls._best_block_message_from_meeting(meeting),
+            )
 
         if meeting.status != MeetingStatus.READY_FOR_AI.value:
             raise HTTPException(
@@ -178,9 +189,16 @@ class MeetingService:
             )
 
         votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
-        recommendation = cls._build_recommendation(meeting, votes)
+        best_interval = cls._select_best_continuous_interval(votes)
+        recommendation = cls._build_recommendation(votes, best_interval)
 
-        meeting.ai_recommendation = recommendation
+        if best_interval is None:
+            meeting.choosen_blocks = []
+        else:
+            meeting.choosen_blocks = cls._serialize_timeblocks(
+                [cls._fit_interval_to_duration(best_interval, meeting.duration_minutes)]
+            )
+        meeting.ai_recommendation = None
         meeting.status = MeetingStatus.AI_RECOMMENDED.value
         db.commit()
         db.refresh(meeting)
@@ -192,39 +210,108 @@ class MeetingService:
         )
 
     @classmethod
-    def _build_recommendation(cls, meeting: MeetingORM, votes: list[ParticipantVoteORM]) -> str:
+    def _build_recommendation(
+        cls,
+        votes: list[ParticipantVoteORM],
+        best_interval: tuple[datetime, datetime, int] | None,
+    ) -> str:
         if not votes:
             return "Brak glosow uczestnikow. Zaproponuj nowy termin i uruchom zbieranie ponownie."
 
-        proposed_blocks = cls._to_timeblocks(meeting.proposed_blocks)
-        if not proposed_blocks:
-            return "Brak propozycji terminow."
+        if best_interval is None:
+            return "Brak przedzialow w available_blocks."
 
-        best_score = -1
-        best_block = proposed_blocks[0]
-
-        for candidate in proposed_blocks:
-            score = 0
-            for vote in votes:
-                available = cls._to_timeblocks(vote.available_blocks)
-                maybe = cls._to_timeblocks(vote.maybe_blocks)
-                if cls._overlaps_any(candidate, available):
-                    score += 2
-                elif cls._overlaps_any(candidate, maybe):
-                    score += 1
-            if score > best_score:
-                best_score = score
-                best_block = candidate
+        best_start, best_end, best_votes = best_interval
 
         return (
-            f"Rekomendacja AI: wybierz termin {best_block.start_time.isoformat()} - "
-            f"{best_block.end_time.isoformat()} (score={best_score})."
+            "Najlepszy przedzial czasowy: "
+            f"{best_start.isoformat()} - {best_end.isoformat()} "
+            f"(glosy={best_votes})."
         )
 
+    @classmethod
+    def _best_block_message_from_meeting(cls, meeting: MeetingORM) -> str:
+        blocks = cls._to_timeblocks(meeting.choosen_blocks)
+        if not blocks:
+            return "Brak przedzialow w available_blocks."
+
+        block = blocks[0]
+        return f"Najlepszy przedzial czasowy: {block.start_time.isoformat()} - {block.end_time.isoformat()}."
+
     @staticmethod
-    def _overlaps_any(candidate: TimeBlock, blocks: list[TimeBlock]) -> bool:
-        for block in blocks:
-            if candidate.start_time < block.end_time and block.start_time < candidate.end_time:
-                return True
-        return False
+    def _fit_interval_to_duration(
+        best_interval: tuple[datetime, datetime, int],
+        duration_minutes: int,
+    ) -> TimeBlock:
+        best_start, best_end, _ = best_interval
+        required = timedelta(minutes=max(1, duration_minutes))
+
+        if best_start + required <= best_end:
+            return TimeBlock(start_time=best_start, end_time=best_start + required)
+
+        # Fallback when the best continuous interval is shorter than requested duration.
+        return TimeBlock(start_time=best_start, end_time=best_end)
+
+    @classmethod
+    def _select_best_continuous_interval(
+        cls,
+        votes: list[ParticipantVoteORM],
+    ) -> tuple[datetime, datetime, int] | None:
+        boundaries: set[datetime] = set()
+        per_participant: dict[str, list[TimeBlock]] = {}
+
+        for vote in votes:
+            blocks = cls._to_timeblocks(vote.available_blocks)
+            if not blocks:
+                continue
+
+            per_participant[vote.participant_id] = blocks
+            for block in blocks:
+                boundaries.add(block.start_time)
+                boundaries.add(block.end_time)
+
+        ordered_boundaries = sorted(boundaries)
+        if len(ordered_boundaries) < 2:
+            return None
+
+        segments: list[tuple[datetime, datetime, int]] = []
+        for idx in range(len(ordered_boundaries) - 1):
+            seg_start = ordered_boundaries[idx]
+            seg_end = ordered_boundaries[idx + 1]
+            if seg_start >= seg_end:
+                continue
+
+            votes_count = 0
+            for blocks in per_participant.values():
+                if any(block.start_time <= seg_start and seg_end <= block.end_time for block in blocks):
+                    votes_count += 1
+
+            segments.append((seg_start, seg_end, votes_count))
+
+        if not segments:
+            return None
+
+        max_votes = max(seg[2] for seg in segments)
+        if max_votes <= 0:
+            return None
+
+        idx = 0
+        while idx < len(segments):
+            seg_start, seg_end, seg_votes = segments[idx]
+            if seg_votes != max_votes:
+                idx += 1
+                continue
+
+            # For ties, always choose the earliest chronological interval.
+            run_start = seg_start
+            run_end = seg_end
+            next_idx = idx + 1
+
+            while next_idx < len(segments) and segments[next_idx][2] == max_votes:
+                run_end = segments[next_idx][1]
+                next_idx += 1
+
+            return run_start, run_end, max_votes
+
+        return None
 
