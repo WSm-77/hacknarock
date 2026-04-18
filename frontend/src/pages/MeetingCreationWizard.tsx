@@ -4,7 +4,7 @@
  * Converted from the provided HTML template.
  */
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession, logout } from '../api/auth';
 import { PageFooter } from '../components/common/PageFooter';
 import { TopNav } from '../components/common/TopNav';
@@ -20,6 +20,18 @@ export function MeetingCreationWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const isCreatePage = location.pathname === '/create';
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await logout();
+    } catch {
+      // Ensure client session is always cleared even if API logout fails.
+    } finally {
+      clearAuthSession();
+      navigate('/');
+    }
+  }
+
   const {
     isSubmitting,
     errorMessage,
@@ -140,14 +152,15 @@ export function MeetingCreationWizard() {
         navListClassName="hidden md:flex gap-6 items-center"
         actionArea={(
           <>
-            !isCreatePage && (
-            <button
+            {!isCreatePage && (
+              <button
                 type="button"
                 className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
                 onClick={() => navigate('/create')}
               >
                 Create New
               </button>
+            )}
             <button
               type="button"
               className="rounded-lg border border-[#dcc1b8] px-4 py-2 text-sm font-medium text-[#56423c] transition hover:border-[#9a4021] hover:text-[#9a4021]"
@@ -156,7 +169,6 @@ export function MeetingCreationWizard() {
               Logout
             </button>
           </>
-          )
         )}
       />
 
