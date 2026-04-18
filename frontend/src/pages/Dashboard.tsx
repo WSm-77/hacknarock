@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearAuthSession, logout } from '../api/auth';
 import { ApiError } from '../api/client';
 import { fetchDashboard, type DashboardResponse } from '../api/integration';
 import { PageFooter } from '../components/common/PageFooter';
@@ -52,6 +53,17 @@ export function Dashboard() {
       isCancelled = true;
     };
   }, []);
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await logout();
+    } catch {
+      // Best effort revoke; local logout must always succeed.
+    }
+
+    clearAuthSession();
+    navigate('/login', { replace: true });
+  }
 
   const navLinks = [
     {
@@ -131,6 +143,13 @@ export function Dashboard() {
               onClick={() => navigate('/create')}
             >
               New Slot
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-[#dcc1b8] px-4 py-2 text-sm font-medium text-[#56423c] transition hover:border-[#9a4021] hover:text-[#9a4021]"
+              onClick={() => void handleLogout()}
+            >
+              Logout
             </button>
           </>
         )}

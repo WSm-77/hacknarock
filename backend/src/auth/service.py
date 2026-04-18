@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+import hashlib
 import secrets
 from typing import cast
 
 from passlib.context import CryptContext
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database.models import AuthSessionORM, UserORM
@@ -13,6 +15,11 @@ from .models import LoginResponse, UserCreate, UserLogin
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 class UserService:
+    @staticmethod
+    def hash_session_token(token: str) -> str:
+        """Return a deterministic hash used for token-at-rest storage."""
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
     @staticmethod
     def get_password_hash(password: str) -> str:
         return pwd_context.hash(password)
@@ -34,9 +41,20 @@ class UserService:
 
         hashed_password = cls.get_password_hash(user_in.password)
 
-        db_user = UserORM(email=user_in.email, hashed_password=hashed_password)
+        db_user = UserORM(
+            email=user_in.email,
+            name=user_in.name,
+            surname=user_in.surname,
+            latitude=user_in.latitude,
+            longitude=user_in.longitude,
+            hashed_password=hashed_password,
+        )
         db.add(db_user)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Użytkownik z tym adresem email już istnieje") from None
         db.refresh(db_user)
 
         return db_user
@@ -56,14 +74,16 @@ class UserService:
 
     @staticmethod
     def create_session(db: Session, user: UserORM, hours_valid: int = 24) -> AuthSessionORM:
+        raw_token = secrets.token_urlsafe(32)
         session = AuthSessionORM(
             user_id=user.id,
-            token=secrets.token_urlsafe(32),
+            token=UserService.hash_session_token(raw_token),
             expires_at=datetime.utcnow() + timedelta(hours=hours_valid),
         )
         db.add(session)
         db.commit()
         db.refresh(session)
+        session.token = raw_token
         return session
 
     @classmethod
@@ -77,14 +97,26 @@ class UserService:
 
     @staticmethod
     def get_user_by_token(db: Session, token: str) -> UserORM | None:
+        token_hash = UserService.hash_session_token(token)
         now = datetime.utcnow()
         session = (
             db.query(AuthSessionORM)
-            .filter(AuthSessionORM.token == token, AuthSessionORM.expires_at > now)
+            .filter(AuthSessionORM.token == token_hash, AuthSessionORM.expires_at > now)
             .first()
         )
         if not session:
             return None
 
         return cast(UserORM | None, db.query(UserORM).filter(UserORM.id == session.user_id).first())
+
+    @staticmethod
+    def invalidate_session_by_token(db: Session, token: str) -> None:
+        """Usuwa sesję po tokenie. Operacja jest idempotentna."""
+        token_hash = UserService.hash_session_token(token)
+        (
+            db.query(AuthSessionORM)
+            .filter(AuthSessionORM.token == token_hash)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
 

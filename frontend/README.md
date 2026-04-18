@@ -85,3 +85,15 @@ Example:
 ```bash
 VITE_API_BASE_URL=http://localhost:8000
 ```
+
+## Auth UI Behavior
+
+- `/login` and `/logging` both render the same `Logging` page.
+- The page supports two modes: `login` and `register`.
+- Register mode submits `name`, `surname`, `email`, `password` to `POST /auth/register`.
+- Login mode submits `email`, `password` to `POST /auth/login`.
+- Logout action calls `POST /auth/logout` (Bearer token required by backend, `204 No Content` on success).
+- After logout action, the app redirects to `/login`.
+- Logout clears local auth session data (`localStorage` auth session key and related auth/session UI data).
+- Duplicate email (`400`) is shown as a field-level email error.
+- Invalid or missing fields are blocked by frontend checks and backend validation.

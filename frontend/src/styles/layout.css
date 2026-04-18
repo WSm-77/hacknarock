@@ -94,6 +94,22 @@
   box-shadow: 0px 0px 0px 1px #d1cfc5;
 }
 
+.logout-btn {
+  border: 1px solid #d1cfc5;
+  background: #ffffff;
+  color: #141413;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #f5f4ed;
+  border-color: #bfbcae;
+}
+
 /* Footer */
 .app-footer {
   background: #141413;

@@ -3,9 +3,63 @@ import { LoggingAccessForm } from './LoggingAccessForm';
 
 interface LoggingCardProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  mode: 'login' | 'register';
+  onModeChange: (mode: 'login' | 'register') => void;
+  name: string;
+  surname: string;
+  latitude: string;
+  longitude: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  onNameChange: (value: string) => void;
+  onSurnameChange: (value: string) => void;
+  onLatitudeChange: (value: string) => void;
+  onLongitudeChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onConfirmPasswordChange: (value: string) => void;
+  isSubmitting: boolean;
+  validationErrors: {
+    name?: string;
+    surname?: string;
+    latitude?: string;
+    longitude?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  };
+  errorMessage: string | null;
 }
 
-export function LoggingCard({ onSubmit }: LoggingCardProps) {
+export function LoggingCard({
+  onSubmit,
+  mode,
+  onModeChange,
+  name,
+  surname,
+  latitude,
+  longitude,
+  email,
+  password,
+  confirmPassword,
+  onNameChange,
+  onSurnameChange,
+  onLatitudeChange,
+  onLongitudeChange,
+  onEmailChange,
+  onPasswordChange,
+  onConfirmPasswordChange,
+  isSubmitting,
+  validationErrors,
+  errorMessage,
+}: LoggingCardProps) {
+  const title = mode === 'login' ? 'Enter the Study' : 'Join the Study';
+  const subtitle =
+    mode === 'login'
+      ? 'Access your curated archives and temporal ledger.'
+      : 'Create your account to begin your curated archive journey.';
+
   return (
     <section className="logging-card" aria-labelledby="study-entry-title">
       <div className="logging-illustration" aria-hidden="true">
@@ -16,11 +70,54 @@ export function LoggingCard({ onSubmit }: LoggingCardProps) {
       </div>
 
       <div className="logging-copy">
-        <h1 id="study-entry-title">Enter the Study</h1>
-        <p>Access your curated archives and temporal ledger.</p>
+        <h1 id="study-entry-title">{title}</h1>
+        <p>{subtitle}</p>
       </div>
 
-      <LoggingAccessForm onSubmit={onSubmit} />
+      <div className="logging-switch" role="tablist" aria-label="Authentication mode">
+        <button
+          type="button"
+          className={`logging-switch__option${mode === 'login' ? ' logging-switch__option--active' : ''}`}
+          onClick={() => onModeChange('login')}
+          disabled={isSubmitting}
+          role="tab"
+          aria-selected={mode === 'login'}
+        >
+          Log In
+        </button>
+        <button
+          type="button"
+          className={`logging-switch__option${mode === 'register' ? ' logging-switch__option--active' : ''}`}
+          onClick={() => onModeChange('register')}
+          disabled={isSubmitting}
+          role="tab"
+          aria-selected={mode === 'register'}
+        >
+          Register
+        </button>
+      </div>
+
+      <LoggingAccessForm
+        onSubmit={onSubmit}
+        mode={mode}
+        name={name}
+        surname={surname}
+        latitude={latitude}
+        longitude={longitude}
+        email={email}
+        password={password}
+        confirmPassword={confirmPassword}
+        onNameChange={onNameChange}
+        onSurnameChange={onSurnameChange}
+        onLatitudeChange={onLatitudeChange}
+        onLongitudeChange={onLongitudeChange}
+        onEmailChange={onEmailChange}
+        onPasswordChange={onPasswordChange}
+        onConfirmPasswordChange={onConfirmPasswordChange}
+        isSubmitting={isSubmitting}
+        validationErrors={validationErrors}
+        errorMessage={errorMessage}
+      />
 
       <div className="logging-links">
         <a className="logging-footnote" href="#">

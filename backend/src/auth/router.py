@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from ..database.models import UserORM
 from ..database.session import get_db
-from .dependencies import get_current_user
+from .dependencies import get_current_user, security
 from .models import LoginResponse, UserCreate, UserLogin, UserResponse
 from .service import UserService
 
@@ -29,7 +30,13 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Ten email jest już zarejestrowany",
         )
 
-    new_user = UserService.create_user(db, user_data)
+    try:
+        new_user = UserService.create_user(db, user_data)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ten email jest już zarejestrowany",
+        ) from None
     return new_user
 
 
@@ -58,3 +65,24 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse, summary="Zwraca aktualnie zalogowanego uzytkownika")
 def me(current_user: UserORM = Depends(get_current_user)):
     return current_user
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Wylogowanie użytkownika",
+    description="Unieważnia aktualny token sesyjny bearer.",
+)
+def logout(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> Response:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Brak tokenu autoryzacyjnego",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    UserService.invalidate_session_by_token(db, credentials.credentials)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

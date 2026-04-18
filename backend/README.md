@@ -25,6 +25,29 @@ Additional auth endpoints:
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/logout`
+
+## Auth Contract (Current)
+
+- `POST /auth/register`
+	- Request JSON: `name`, `surname`, `email`, `password`
+	- Success: `201 Created` with `{ id, email }`
+	- Duplicate email: `400 Bad Request`
+- `POST /auth/login`
+	- Request JSON: `email`, `password`
+	- Success: `200 OK` with `{ access_token, token_type, user }`
+	- Invalid credentials: `401 Unauthorized`
+- `POST /auth/logout`
+	- Requires `Authorization: Bearer <token>`
+	- Success: `204 No Content`
+	- Behavior: invalidates the provided session token (idempotent revoke)
+	- Missing token: `401 Unauthorized`
+
+Validation summary:
+
+- `email` is validated and normalized (trimmed/lowercased).
+- `name` and `surname` must be non-empty after trimming.
+- `password` for registration must be between 8 and 128 characters.
 
 ## Environment Variables
 
