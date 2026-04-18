@@ -1,4 +1,3 @@
-from .meeting_orm import MeetingORM
-from .participant_vote_orm import ParticipantVoteORM
+from ...database.models import MeetingORM, ParticipantVoteORM
 
 __all__ = ["MeetingORM", "ParticipantVoteORM"]

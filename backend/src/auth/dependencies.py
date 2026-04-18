@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from .models import UserORM
+from ..database.models import UserORM
 from .service import UserService
 from db import get_db
 

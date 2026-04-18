@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..auth.dependencies import get_current_user
-from ..auth.models import UserORM
+from ..database.models import UserORM
 from db import get_db
 from .domain import (
     MeetingCreateRequest,

@@ -5,10 +5,9 @@ import secrets
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..auth.models import UserORM
+from ..database.models import MeetingORM, ParticipantVoteORM, UserORM
 from .common import ParticipantAvailability, TimeBlock
 from .domain import MeetingDetailsResponse, MeetingResponse, MeetingStatus, TriggerAIResponse
-from .models import MeetingORM, ParticipantVoteORM
 
 
 class MeetingService:
