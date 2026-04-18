@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from src.model.meetings_models import TimeBlock
 from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,4 +14,4 @@ class ParticipantVoteORM(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     meeting_id: Mapped[str] = mapped_column(String(36), ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     participant_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    available_blocks: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    available_blocks: Mapped[list[TimeBlock]] = mapped_column(JSON, nullable=False, default=list)
