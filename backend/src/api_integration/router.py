@@ -10,7 +10,7 @@ from .models import (
     VoteRequestDTO,
     VoteResponseDTO,
 )
-from .service import integration_store
+from .service import integration_service
 
 router = APIRouter(prefix="/api", tags=["Integration"])
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api", tags=["Integration"])
 @router.get("/dashboard", response_model=DashboardResponseDTO)
 def get_dashboard() -> DashboardResponseDTO:
     """Zwraca podstawowe dane dashboardu dla widoku frontendu."""
-    return integration_store.get_dashboard()
+    return integration_service.get_dashboard()
 
 
 @router.post(
@@ -29,7 +29,7 @@ def get_dashboard() -> DashboardResponseDTO:
 def create_meeting(payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO:
     """Tworzy spotkanie oraz powiązaną ankietę głosowania."""
     try:
-        return integration_store.create_meeting(payload)
+        return integration_service.create_meeting(payload)
     except OverflowError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -41,7 +41,7 @@ def create_meeting(payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO
 def get_poll(poll_id: UUID) -> PollResponseDTO:
     """Zwraca szczegóły pojedynczej ankiety wraz z opcjami głosowania."""
     try:
-        return integration_store.get_poll(poll_id)
+        return integration_service.get_poll(poll_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -53,7 +53,7 @@ def get_poll(poll_id: UUID) -> PollResponseDTO:
 def submit_vote(poll_id: UUID, payload: VoteRequestDTO) -> VoteResponseDTO:
     """Zapisuje głos dla opcji ankiety i aktualizuje liczniki."""
     try:
-        return integration_store.submit_vote(
+        return integration_service.submit_vote(
             poll_id=poll_id,
             option_id=payload.option_id,
             voter_id=payload.voter_id,
