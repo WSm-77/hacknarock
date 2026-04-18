@@ -29,7 +29,13 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Ten email jest już zarejestrowany",
         )
 
-    new_user = UserService.create_user(db, user_data)
+    try:
+        new_user = UserService.create_user(db, user_data)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ten email jest już zarejestrowany",
+        ) from None
     return new_user
 
 

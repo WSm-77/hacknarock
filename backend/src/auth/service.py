@@ -3,6 +3,7 @@ import secrets
 from typing import cast
 
 from passlib.context import CryptContext
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database.models import AuthSessionORM, UserORM
@@ -34,9 +35,18 @@ class UserService:
 
         hashed_password = cls.get_password_hash(user_in.password)
 
-        db_user = UserORM(email=user_in.email, hashed_password=hashed_password)
+        db_user = UserORM(
+            email=user_in.email,
+            name=user_in.name,
+            surname=user_in.surname,
+            hashed_password=hashed_password,
+        )
         db.add(db_user)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Użytkownik z tym adresem email już istnieje") from None
         db.refresh(db_user)
 
         return db_user
