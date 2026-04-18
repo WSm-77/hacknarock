@@ -1,39 +1,5 @@
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-
-app = FastAPI(
-    title="HackNaRock API",
-    description="Backend API for HackNaRock",
-    version="0.1.0"
-)
-
-
-@app.get("/")
-async def root() -> JSONResponse:
-    """
-    Root endpoint that returns a welcome message.
-
-    Returns:
-        JSONResponse: Welcome message with API info
-    """
-    return JSONResponse({
-        "message": "Witaj w HackNaRock API!",
-        "status": "ok",
-        "version": "0.1.0"
-    })
-
-
-@app.get("/health")
-async def health_check() -> JSONResponse:
-    """
-    Health check endpoint.
-
-    Returns:
-        JSONResponse: Health status
-    """
-    return JSONResponse({
-        "status": "healthy"
-    })
+from src.app import app
+from src.core.config import get_cors_origins as _get_cors_origins
 
 
 if __name__ == "__main__":

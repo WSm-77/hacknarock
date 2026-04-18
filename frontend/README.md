@@ -71,3 +71,29 @@ export default defineConfig([
   },
 ])
 ```
+
+## API Configuration
+
+Frontend API calls use `VITE_API_BASE_URL` as the single base URL source.
+
+- If `VITE_API_BASE_URL` is set, that value is used.
+- If not set, the app defaults to `http://localhost:8000` when opened from localhost.
+- On non-localhost hosts, it defaults to `<current-protocol>//<current-host>:8000`.
+
+Example:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+## Auth UI Behavior
+
+- `/login` and `/logging` both render the same `Logging` page.
+- The page supports two modes: `login` and `register`.
+- Register mode submits `name`, `surname`, `email`, `password` to `POST /auth/register`.
+- Login mode submits `email`, `password` to `POST /auth/login`.
+- Logout action calls `POST /auth/logout` (Bearer token required by backend, `204 No Content` on success).
+- After logout action, the app redirects to `/login`.
+- Logout clears local auth session data (`localStorage` auth session key and related auth/session UI data).
+- Duplicate email (`400`) is shown as a field-level email error.
+- Invalid or missing fields are blocked by frontend checks and backend validation.

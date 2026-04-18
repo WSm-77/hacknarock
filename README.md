@@ -1,40 +1,44 @@
 # HackNaRock - Team Meeting Scheduler
 
-A project for planning team meetings: from gathering availability and interest in time slots, through automatic selection of the best time, to generating an agenda and drafting a reservation email.
+HackNaRock helps teams create meetings, collect participation votes, and monitor meeting state from a single web app.
 
-## Features
+## Local Stack (Docker Compose)
 
-- Regular calendar with accepted meeting times
-- Calendar for adding interest in time slots for specific events
-- Algorithm matching interest to availability and accepting time slots
-- Algorithm searching for meeting venues and creating reservation emails
-- Algorithm generating agendas based on events
+`docker-compose.yml` now runs all local services together:
 
-## Implementation Plan
+- `frontend` (Vite, default: `http://localhost:5173`)
+- `backend` (FastAPI, default: `http://localhost:8000`)
+- `postgres` (default: `localhost:5432`)
 
-### Step 1
-Set up a regular calendar with events to be accepted.
+Start locally:
 
-### Step 2
-Implement algorithm matching interest to events and accepting time slots.
+```bash
+docker compose up --build
+```
 
-### Step 3
-Implement algorithm for generating agendas based on events.
+## Frontend to API Integration
 
-### Step 4
-Implement algorithm for searching meeting venues and creating reservation emails.
+Key API endpoints currently used by the frontend:
 
-## Workflow
+| Endpoint | Method | Used by frontend page | Purpose |
+|---|---|---|---|
+| `/api/dashboard` | `GET` | `/` (`Dashboard`) | Fetch dashboard counters and recent meetings |
+| `/api/meetings` | `POST` | `/create` (`MeetingCreationWizard`) | Create a meeting and voting poll |
+| `/api/polls/{poll_id}` | `GET` | `/vote/:pollId` (`ParticipationPage`) | Load poll details and options |
+| `/api/polls/{poll_id}/votes` | `POST` | `/vote/:pollId` (`ParticipationPage`) | Submit a vote |
 
-1. Organizer shares their availability.
-2. Participants express interest in time slots.
-3. Algorithm matches interest to availability and accepts time slots (greedy algorithm).
-4. AI searches for a meeting venue and creates a reservation email.
+Authentication endpoints are used by the logging page (`/login` and `/logging`):
 
-## Project Goal
+- `POST /auth/register` requires `name`, `surname`, `email`, `password`.
+- `POST /auth/login` requires `email`, `password`.
+- `POST /auth/logout` requires a Bearer token, invalidates that token server-side, and returns `204 No Content`.
+- `/login` and `/logging` render the same UI with mode switching (`login`/`register`).
+- Frontend logout uses `POST /auth/logout`, clears local auth session data, and redirects to `/login`.
+- Registration duplicate email returns `400` and is surfaced as an email field error.
+- Invalid auth payloads (missing/invalid fields) are rejected by backend validation.
 
-The goal of this project is to reduce the time needed to organize team meetings and minimize manual work on:
+## Environment Variables
 
-- Time slot selection,
-- Agenda preparation,
-- Venue reservation.
+No extra variables are required for default local development because Compose provides safe defaults.
+
+Only set variables when you need custom ports, DB credentials, CORS origins, or API base URL (for example `BACKEND_PORT`, `FRONTEND_PORT`, `POSTGRES_*`, `FRONTEND_CORS_ORIGINS`, `VITE_API_BASE_URL`).

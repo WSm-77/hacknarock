@@ -1,1 +1,4 @@
 .github/
+.env
+credentials.json
+.vscode/

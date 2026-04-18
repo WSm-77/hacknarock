@@ -5,15 +5,28 @@ description = "FastAPI backend for HackNaRock hackathon project"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "email-validator>=2.3.0",
+    "dotenv>=0.9.9",
     "fastapi>=0.136.0",
+    "passlib[bcrypt]>=1.7.4",
+    "pydantic>=2.13.2",
+    "ruff>=0.15.11",
+    "sqlalchemy>=2.0.40",
+    "psycopg[binary]>=3.2.0",
+    "google-genai>=1.73.1",
     "uvicorn>=0.44.0",
 ]
 
 [project.scripts]
 dev = "main:app"
+# Console script to seed a test user: `uv run seed-test-user`
+clear-db = "src.scripts.clear_db:clear_db"
+create-db = "src.scripts.create_db:create_db"
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=8.3.0",
+]
 
 [tool.uv]
 package = true
