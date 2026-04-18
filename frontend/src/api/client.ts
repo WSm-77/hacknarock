@@ -63,6 +63,32 @@ async function parseErrorDetail(response: Response): Promise<string> {
       if (typeof detail === 'string' && detail.length > 0) {
         return detail;
       }
+
+      if (Array.isArray(detail)) {
+        const messages = detail
+          .map((item) => {
+            if (typeof item !== 'object' || item === null) {
+              return null;
+            }
+
+            const message = (item as { msg?: unknown }).msg;
+            if (typeof message === 'string' && message.length > 0) {
+              return message;
+            }
+
+            const location = (item as { loc?: unknown }).loc;
+            if (Array.isArray(location) && location.length > 0) {
+              return `Validation error at ${location.join('.')}`;
+            }
+
+            return null;
+          })
+          .filter((message): message is string => Boolean(message));
+
+        if (messages.length > 0) {
+          return messages.join('; ');
+        }
+      }
     }
   } catch {
     // Ignore parsing errors and use fallback text.

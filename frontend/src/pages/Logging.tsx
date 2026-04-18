@@ -9,6 +9,9 @@ import '../styles/logging.css';
 
 type LoggingMode = 'login' | 'register';
 
+const REGISTER_PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 128;
+
 interface ValidationErrors {
   name?: string;
   surname?: string;
@@ -99,6 +102,10 @@ export function Logging() {
 
     if (!password) {
       nextErrors.password = 'Password is required.';
+    } else if (mode === 'register' && password.length < REGISTER_PASSWORD_MIN_LENGTH) {
+      nextErrors.password = `Password must be at least ${REGISTER_PASSWORD_MIN_LENGTH} characters.`;
+    } else if (password.length > PASSWORD_MAX_LENGTH) {
+      nextErrors.password = `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`;
     }
 
     if (mode === 'register') {
@@ -179,6 +186,8 @@ export function Logging() {
             email: 'This email is already registered.',
           }));
           setErrorMessage('That email is already in use. Try logging in instead.');
+        } else if (error.status === 422 && mode === 'register') {
+          setErrorMessage(detail || 'Please check the registration fields and try again.');
         } else if (error.status === 401) {
           setErrorMessage('Invalid email or password.');
         } else if (error.status >= 500) {
