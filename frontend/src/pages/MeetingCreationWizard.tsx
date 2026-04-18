@@ -18,6 +18,8 @@ import { useCreateMeeting } from '../hooks/useCreateMeeting';
 
 export function MeetingCreationWizard() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isCreatePage = location.pathname === '/create';
   const {
     isSubmitting,
     errorMessage,
@@ -117,13 +119,14 @@ export function MeetingCreationWizard() {
         navListClassName="hidden md:flex gap-6 items-center"
         actionArea={(
           <>
+            !isCreatePage && (
             <button
-              type="button"
-              className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
-              onClick={() => navigate('/create')}
-            >
-              Create New
-            </button>
+                type="button"
+                className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] hidden md:inline-flex items-center gap-2"
+                onClick={() => navigate('/create')}
+              >
+                Create New
+              </button>
             <button
               type="button"
               className="rounded-lg border border-[#dcc1b8] px-4 py-2 text-sm font-medium text-[#56423c] transition hover:border-[#9a4021] hover:text-[#9a4021]"
@@ -132,10 +135,11 @@ export function MeetingCreationWizard() {
               Logout
             </button>
           </>
+          )
         )}
       />
 
-      <main className="flex-grow max-w-4xl mx-auto w-full px-6 py-16 md:py-24">
+      <main className="flex-grow max-w-6xl mx-auto w-full px-6 py-16 md:py-24">
         <WizardHeader />
 
         <div className="bg-surface-container-low rounded-xl p-8 md:p-12 shadow-[0px_0px_0px_1px_rgba(20,20,19,0.05)] relative overflow-hidden">

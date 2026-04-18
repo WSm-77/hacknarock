@@ -20,6 +20,8 @@ export interface CreateMeetingPayload {
   title: string;
   description?: string;
   organizer_name?: string;
+  duration_minutes?: number;
+  proposed_blocks?: Array<{ day: string; time: string }>;
 }
 
 export interface CreateMeetingResponse {

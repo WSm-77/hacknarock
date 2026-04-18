@@ -32,7 +32,12 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
     };
   }, [onCreated, shareLink, successMessage]);
 
-  async function submitMeeting(title: string, description?: string): Promise<void> {
+  async function submitMeeting(
+    title: string,
+    description?: string,
+    duration?: number,
+    proposedBlocks?: Array<{ day: string; time: string }>,
+  ): Promise<void> {
     if (!title.trim()) {
       setErrorMessage('Meeting title is required.');
       setSuccessMessage(null);
@@ -46,6 +51,8 @@ export function useCreateMeeting({ onCreated }: UseCreateMeetingParams) {
       const response = await createMeeting({
         title: title.trim(),
         description: description?.trim() || undefined,
+        duration_minutes: duration || undefined,
+        proposed_blocks: proposedBlocks || [],
       });
 
       const nextShareLink = `${window.location.origin}/vote/${response.poll_id}`;
