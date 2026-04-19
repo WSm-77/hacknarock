@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
+from src.model.meetings_models import TimeBlock
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,7 +22,7 @@ class MeetingORM(Base):
     status: Mapped[MeetingStatus] = mapped_column(String(32), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     availability_deadline: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    proposed_blocks: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    proposed_blocks: Mapped[list[TimeBlock]] = mapped_column(JSON, nullable=False, default=list)
     participants_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     auto_find_venue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     venue_recommendations_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

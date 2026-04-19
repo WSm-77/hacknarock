@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -7,9 +8,34 @@ from fastapi.responses import JSONResponse
 
 from src.api_integration.router import router as integration_router
 from src.auth.router import router as auth_router
-from src.core.config import get_cors_origins
 from src.meetings.router import router as meetings_router
 from src.scripts.create_db import create_db
+
+
+def get_cors_origins() -> list[str]:
+    """Return allowed frontend origins for local/dev CORS policy."""
+    raw_origins = os.getenv("FRONTEND_CORS_ORIGINS", "")
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
+
+    if not raw_origins.strip():
+        return default_origins
+
+    parsed: list[str] = []
+    for candidate in (item.strip() for item in raw_origins.split(",")):
+        if not candidate:
+            continue
+        if candidate == "*":
+            continue
+        if not (candidate.startswith("http://") or candidate.startswith("https://")):
+            continue
+        parsed.append(candidate)
+
+    return parsed or default_origins
 
 
 @asynccontextmanager
