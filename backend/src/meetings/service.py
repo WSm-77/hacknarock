@@ -321,6 +321,30 @@ class MeetingService:
         return cls._meeting_join_response(meeting)
 
     @classmethod
+    def get_meeting_details_public(cls, db: Session, meeting_id: UUID) -> MeetingDetailsResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if not meeting:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Meeting nie istnieje",
+            )
+
+        cls._touch_deadline_transition(db, meeting)
+
+        votes_count = (
+            db.query(ParticipantVoteORM)
+            .filter(ParticipantVoteORM.meeting_id == meeting.id)
+            .count()
+        )
+
+        data = cls._meeting_response(meeting)
+        return MeetingDetailsResponse(
+            **data.model_dump(),
+            votes_count=votes_count,
+            participant_availabilities=[],
+        )
+
+    @classmethod
     def trigger_ai_recommendation(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> TriggerAIResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
         if not meeting:

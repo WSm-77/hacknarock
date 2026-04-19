@@ -54,12 +54,6 @@ class ParticipantAvailability(BaseModel):
     coordinates: Coordinates | None = None
 
 
-class MeetingStatus(str, Enum):
-    COLLECTING_AVAILABILITY = "collecting_availability"
-    WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
-    FINALIZED = "finalized"
-
-
 class MeetingCreateRequest(BaseModel):
     meeting_title: str = Field(min_length=1, max_length=255)
     duration_minutes: int = Field(ge=1, le=1440)

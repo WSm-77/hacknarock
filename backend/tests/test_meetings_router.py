@@ -144,6 +144,41 @@ def test_meeting_happy_path_matches_database_model(meetings_client):
         assert isinstance(saved_vote.maybe_blocks, list)
 
 
+def test_get_meeting_details_public_endpoint_returns_meeting_without_auth(meetings_client):
+    client, _ = meetings_client
+
+    organizer_token = _register_and_login(client, "public.details.organizer@example.com", "secret123")
+
+    start = datetime.now(timezone.utc) + timedelta(minutes=10)
+    end = start + timedelta(minutes=45)
+    deadline = datetime.now(timezone.utc) + timedelta(minutes=20)
+
+    create_payload = {
+        "meeting_title": "Public details page",
+        "duration_minutes": 45,
+        "location": "Warszawa",
+        "description": "Public endpoint regression",
+        "proposed_blocks": [{"start_time": start.isoformat(), "end_time": end.isoformat()}],
+        "availability_deadline": deadline.isoformat(),
+    }
+
+    create_response = client.post(
+        "/meetings",
+        json=create_payload,
+        headers={"Authorization": f"Bearer {organizer_token}"},
+    )
+    assert create_response.status_code == 201
+    meeting_id = create_response.json()["id"]
+
+    details_response = client.get(f"/meetings/{meeting_id}/details")
+
+    assert details_response.status_code == 200
+    details = details_response.json()
+    assert details["id"] == meeting_id
+    assert details["meeting_title"] == create_payload["meeting_title"]
+    assert details["votes_count"] == 0
+
+
 def test_create_meeting_requires_database_required_fields(meetings_client):
     client, _ = meetings_client
     organizer_token = _register_and_login(client, "required.fields@example.com", "secret123")
