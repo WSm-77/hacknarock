@@ -143,6 +143,26 @@ def test_create_meeting_defaults_to_collecting_votes_in_dashboard(integration_cl
     assert poll_entry["status"] == "collecting_votes"
 
 
+def test_dashboard_preserves_finalized_status_for_calendar_meetings(integration_client) -> None:
+    client, session_local = integration_client
+
+    created = client.post("/api/meetings", json={"title": "Calendar finalized sample"})
+    assert created.status_code == 201
+    meeting_id = created.json()["meeting_id"]
+
+    _set_status(session_local, meeting_id, "finalized")
+
+    dashboard = client.get("/api/dashboard")
+    assert dashboard.status_code == 200
+
+    payload = dashboard.json()
+    poll_entry = next(item for item in payload["polls"] if item["meeting_id"] == meeting_id)
+    calendar_entry = next(item for item in payload["calendar_meetings"] if item["meeting_id"] == meeting_id)
+
+    assert poll_entry["status"] == "finalized"
+    assert calendar_entry["status"] == "finalized"
+
+
 def test_dashboard_db_failure_returns_empty_poll_sections(monkeypatch, integration_client) -> None:
     client, _ = integration_client
 
