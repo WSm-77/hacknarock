@@ -86,6 +86,28 @@
   padding-bottom: 64px;
 }
 
+.meeting-confirmation-page .mc-state-card {
+  max-width: 760px;
+  margin: 0 auto 32px;
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--mc-shadow);
+  text-align: center;
+}
+
+.meeting-confirmation-page .mc-state-card h1 {
+  margin-bottom: 10px;
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 2.5vw, 2.1rem);
+}
+
+.meeting-confirmation-page .mc-state-card p {
+  color: var(--mc-muted);
+  margin-bottom: 16px;
+}
+
 .meeting-confirmation-page .mc-hero {
   text-align: center;
   margin-bottom: 72px;
@@ -126,6 +148,13 @@
   font-family: var(--serif);
   color: var(--mc-primary);
   font-size: clamp(1.6rem, 2.3vw, 2.2rem);
+}
+
+.meeting-confirmation-page .mc-meta-line {
+  margin-top: -6px;
+  margin-bottom: 18px;
+  color: var(--mc-muted);
+  font-size: 0.92rem;
 }
 
 .meeting-confirmation-page .mc-hero-actions {

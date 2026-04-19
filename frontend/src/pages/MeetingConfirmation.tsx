@@ -1,3 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ApiError } from '../api/client';
+import { fetchMeetingDetails, type MeetingDetailsResponse, type MeetingTimeBlock } from '../api/integration';
 import '../styles/meeting-confirmation.css';
 
 type Venue = {
@@ -37,32 +41,153 @@ const venues: Venue[] = [
   },
 ];
 
-const agendaItems: AgendaItem[] = [
-  {
-    title: 'The Foundation',
-    duration: '15 MIN',
-    description:
-      'Opening remarks and establishing the scope of the project. Defining the aesthetic milestones for Q1.',
-    status: 'Approved for print',
-    approved: true,
-  },
-  {
-    title: 'Technical Deep-Dive',
-    duration: '45 MIN',
-    description:
-      'A critical review of the current manuscript infrastructure. Discussion on preservation and accessibility protocols.',
-    status: 'Awaiting final polish',
-    approved: false,
-  },
-  {
-    title: 'The Horizon Path',
-    duration: '20 MIN',
-    description:
-      'Closing remarks and assignment of curatorial duties for the upcoming review cycle.',
-  },
-];
+function formatMeetingStatus(status: string): string {
+  return status.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatTimeBlockLabel(block: MeetingTimeBlock): string {
+  const start = new Date(block.start_time);
+  const end = new Date(block.end_time);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 'Time to be confirmed';
+  }
+
+  const day = start.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+  const startTime = start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const endTime = end.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${day} • ${startTime} - ${endTime}`;
+}
+
+function formatDuration(block: MeetingTimeBlock): string {
+  const start = new Date(block.start_time);
+  const end = new Date(block.end_time);
+  const durationMs = end.getTime() - start.getTime();
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return 'TBD';
+  }
+
+  const minutes = Math.round(durationMs / 60000);
+  return `${minutes} MIN`;
+}
+
+function mapAgendaItems(details: MeetingDetailsResponse | null): AgendaItem[] {
+  if (!details || details.proposed_blocks.length === 0) {
+    return [
+      {
+        title: 'Scheduling Window Pending',
+        duration: 'TBD',
+        description: 'No proposed time blocks are available yet for this meeting.',
+      },
+    ];
+  }
+
+  return details.proposed_blocks.map((block, index) => ({
+    title: `Time Block ${index + 1}`,
+    duration: formatDuration(block),
+    description: formatTimeBlockLabel(block),
+    status: index === 0 ? 'Recommended window' : 'Available alternative',
+    approved: index === 0,
+  }));
+}
 
 export function MeetingConfirmation() {
+  const { meetingId } = useParams<{ meetingId: string }>();
+  const navigate = useNavigate();
+  const [details, setDetails] = useState<MeetingDetailsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadMeetingDetails(): Promise<void> {
+      if (!meetingId) {
+        if (!isCancelled) {
+          setErrorMessage('Missing meeting ID in route.');
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      try {
+        if (!isCancelled) {
+          setIsLoading(true);
+        }
+
+        const data = await fetchMeetingDetails(meetingId);
+        if (!isCancelled) {
+          setDetails(data);
+          setErrorMessage(null);
+          document.title = `SnapSlot - Confirmation ${data.id.slice(0, 8)}`;
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          if (error instanceof ApiError) {
+            setErrorMessage(error.detail);
+          } else {
+            setErrorMessage('Failed to load meeting confirmation data.');
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadMeetingDetails();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [meetingId]);
+
+  const agendaItems = useMemo(() => mapAgendaItems(details), [details]);
+  const recommendedWindow = useMemo(() => {
+    if (!details || details.proposed_blocks.length === 0) {
+      return 'No proposed time blocks yet';
+    }
+
+    return formatTimeBlockLabel(details.proposed_blocks[0]);
+  }, [details]);
+
+  const participantSummary = useMemo(() => {
+    if (!details) {
+      return 'Participants and votes will appear here once loaded.';
+    }
+
+    const configuredParticipants = details.participants_count ?? 0;
+    const voteLabel = details.votes_count === 1 ? 'vote' : 'votes';
+    return `${configuredParticipants} expected participants • ${details.votes_count} ${voteLabel} received`;
+  }, [details]);
+
+  if (errorMessage && !details) {
+    return (
+      <div className="meeting-confirmation-page">
+        <main className="mc-container mc-main">
+          <section className="mc-state-card" role="alert">
+            <h1>Meeting not found</h1>
+            <p>{errorMessage}</p>
+            <button className="mc-primary-btn" type="button" onClick={() => navigate('/')}>
+              Go back home
+            </button>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="meeting-confirmation-page">
       <header className="mc-topbar">
@@ -90,15 +215,22 @@ export function MeetingConfirmation() {
       </header>
 
       <main className="mc-container mc-main">
+        {isLoading ? (
+          <section className="mc-state-card" aria-live="polite">
+            <h1>Loading confirmation details...</h1>
+            <p>Retrieving the latest voting and schedule information.</p>
+          </section>
+        ) : null}
+
         <section className="mc-hero">
           <span className="mc-eyebrow">Recommendation Report</span>
-          <h1>The Optimal Selection</h1>
+          <h1>{details?.title ?? 'The Optimal Selection'}</h1>
           <div className="mc-hero-card">
             <p>
-              Based on participant synchronicity and spatial availability, the following window is
-              recommended:
+              Status: <strong>{details ? formatMeetingStatus(details.status) : 'Loading status'}</strong>
             </p>
-            <h2>Tuesday, Nov 12th @ 2:00 PM</h2>
+            <h2>{recommendedWindow}</h2>
+            <p className="mc-meta-line">{participantSummary}</p>
             <div className="mc-hero-actions">
               <button className="mc-primary-btn" type="button">
                 Confirm and Finalize
@@ -137,7 +269,7 @@ export function MeetingConfirmation() {
           <div className="mc-section-header mc-section-header-wide">
             <div>
               <h3>Agenda Refinement</h3>
-              <p>The AI-curated manuscript of discourse</p>
+              <p>{details?.description ?? 'The AI-curated manuscript of discourse'}</p>
             </div>
             <button type="button">Export Agenda (PDF)</button>
           </div>

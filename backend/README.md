@@ -43,7 +43,7 @@ The dashboard response now includes two frontend mapping collections in addition
 
 ### Poll visibility rules
 
-- Included statuses: `collecting_votes`, `waiting_for_acceptance`, `confirmed`, `scheduled`.
+- Included statuses: `collecting_votes`, `waiting_for_confirmation`, `confirmed`, `scheduled`.
 - Excluded statuses: `draft`.
 - `open_polls` equals `len(polls)`.
 

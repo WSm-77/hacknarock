@@ -45,7 +45,7 @@ function App() {
           <Route path="/:meetingId" element={<MeetingDetails />} />
           <Route path="/meeting/:meetingId/details" element={<MeetingDetails />} />
           <Route path="/meeting/:meetingId" element={<MeetingDetails />} />
-          <Route path="/meeting-confirmation" element={<MeetingConfirmation />} />
+          <Route path="/meeting-confirmation/:meetingId" element={<MeetingConfirmation />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Dashboard />} />

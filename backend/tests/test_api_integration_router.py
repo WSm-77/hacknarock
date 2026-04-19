@@ -207,6 +207,56 @@ def test_poll_and_availability_endpoints_are_separate(integration_client):
     assert availability_response.status_code == 200
 
 
+def test_votes_transition_status_to_waiting_for_confirmation_after_third_distinct_voter(integration_client) -> None:
+    client, session_local = integration_client
+
+    create_response = client.post(
+        "/api/meetings",
+        json={
+            "title": "Vote threshold transition",
+            "description": "Transition status after enough distinct voters",
+            "organizer_name": "Wiktor",
+        },
+    )
+    assert create_response.status_code == 201
+
+    meeting_id = create_response.json()["meeting_id"]
+    poll_id = create_response.json()["poll_id"]
+
+    poll_response = client.get(f"/api/polls/{poll_id}")
+    assert poll_response.status_code == 200
+    option_id = poll_response.json()["options"][0]["option_id"]
+
+    for voter_id in ["alice", "bob"]:
+        vote_response = client.post(
+            f"/api/polls/{poll_id}/votes",
+            json={"option_id": option_id, "voter_id": voter_id},
+        )
+        assert vote_response.status_code == 200
+
+        with session_local() as db:
+            meeting = db.query(MeetingORM).filter(MeetingORM.id == meeting_id).first()
+            assert meeting is not None
+            assert meeting.status == "collecting_votes"
+
+    third_vote_response = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_id, "voter_id": "charlie"},
+    )
+    assert third_vote_response.status_code == 200
+
+    with session_local() as db:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == meeting_id).first()
+        assert meeting is not None
+        assert meeting.status == "waiting_for_confirmation"
+
+    dashboard_response = client.get("/api/dashboard")
+    assert dashboard_response.status_code == 200
+    polls_by_meeting = {item["meeting_id"]: item for item in dashboard_response.json()["polls"]}
+    assert meeting_id in polls_by_meeting
+    assert polls_by_meeting[meeting_id]["status"] == "waiting_for_confirmation"
+
+
 def test_poll_not_found_returns_404(integration_client):
     client, _ = integration_client
     token = _register_and_login(client, "poll.not.found@example.com", "secret123")

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 
 interface ActivePollCard {
   status: string;
+  rawStatus: string;
   statusClassName: string;
   votes: string;
   title: string;
   pollId?: string;
+  meetingId?: string;
   cardClassName: string;
   actionLabel: string;
   actionClassName: string;
@@ -14,7 +16,7 @@ interface ActivePollCard {
 
 const STATUS_LABELS: Record<string, string> = {
   collecting_votes: 'Collecting Votes',
-  waiting_for_acceptance: 'Waiting for Acceptance',
+  waiting_for_confirmation: 'Waiting for Confirmation',
 };
 
 interface ActivePollsPanelProps {
@@ -29,16 +31,18 @@ function toCard(poll: DashboardPoll): ActivePollCard {
 
   return {
     status: friendlyStatus,
+    rawStatus: poll.status,
     statusClassName: isPrimaryStatus
       ? 'text-xs font-label uppercase tracking-widest text-primary font-bold'
       : 'text-xs font-label uppercase tracking-widest text-on-surface-variant/60 font-bold',
     votes: `${poll.participants} participants`,
     title: poll.title,
     pollId: poll.poll_id ?? undefined,
+    meetingId: poll.meeting_id ?? undefined,
     cardClassName: isPrimaryStatus
       ? 'bg-surface-container-low p-5 rounded-xl border-l-4 border-primary transition-transform hover:translate-x-1 duration-300'
       : 'bg-surface-container-low p-5 rounded-xl border-l-4 border-outline-variant transition-transform hover:translate-x-1 duration-300',
-    actionLabel: poll.poll_id ? 'View Details' : 'Link Pending',
+    actionLabel: poll.status === 'waiting_for_confirmation' ? 'Open Confirmation' : poll.poll_id ? 'View Details' : 'Link Pending',
     actionClassName: isPrimaryStatus
       ? 'w-full py-2 text-sm font-label font-semibold text-primary hover:bg-primary/5 rounded transition-colors'
       : 'w-full py-2 text-sm font-label font-semibold text-on-surface-variant hover:bg-surface-variant/50 rounded transition-colors',
@@ -73,8 +77,13 @@ export function ActivePollsPanel({ polls, isLoading = false, openPollCount }: Ac
               <button
                 type="button"
                 className={card.actionClassName}
-                disabled={!card.pollId}
+                disabled={card.rawStatus === 'waiting_for_confirmation' ? !card.meetingId : !card.pollId}
                 onClick={() => {
+                  if (card.rawStatus === 'waiting_for_confirmation' && card.meetingId) {
+                    navigate(`/meeting-confirmation/${card.meetingId}`);
+                    return;
+                  }
+
                   if (card.pollId) {
                     navigate(`/vote/${card.pollId}`);
                   }
