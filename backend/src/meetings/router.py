@@ -60,14 +60,14 @@ def update_meeting(
     )
 
 
-@router.get("/{meeting_id}", response_model=MeetingResponse)
+# Zwróć uwagę na response_model!
+@router.get("/{meeting_id}", response_model=MeetingDetailsResponse)
 def get_meeting_details(
     meeting_id: UUID,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
     return MeetingService.get_meeting_for_organizer(db=db, meeting_id=meeting_id, organizer=current_user)
-
 
 @router.get("/join/{public_token}", response_model=MeetingJoinResponse)
 def get_meeting_by_public_link(

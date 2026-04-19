@@ -1,5 +1,5 @@
-import { type FormEvent, useMemo, useState, useEffect } from "react";
-import type { TimeBlockPayload } from "../../api/meetings";
+import type {TimeBlockPayload} from "../../api/meetings.ts";
+import {type FormEvent, useEffect, useMemo, useState} from "react";
 
 function generateTimeLabels() {
   const labels: string[] = [];
@@ -31,8 +31,8 @@ const dayLabels: Record<DayKey, string> = {
 interface ParticipantTimingSelectionProps {
   proposedBlocks: TimeBlockPayload[];
   onSubmit: (
-    event: FormEvent<HTMLFormElement>,
-    availableBlocks: TimeBlockPayload[],
+      event: FormEvent<HTMLFormElement>,
+      availableBlocks: TimeBlockPayload[],
   ) => Promise<void>;
   errorMessage: string | null;
   successMessage: string | null;
@@ -88,7 +88,6 @@ function slotKey(dateKey: string, timeIndex: number): string {
   return `${dateKey}|${timeIndex}`;
 }
 
-// Funkcja pomocnicza do obliczania przesunięcia tygodniowego dla zadanej daty
 function getWeekOffsetFromDate(targetDate: Date): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -106,36 +105,34 @@ function getWeekOffsetFromDate(targetDate: Date): number {
 
   const msPerDay = 24 * 60 * 60 * 1000;
   const diffDays = Math.round(
-    (targetMonday.getTime() - currentMonday.getTime()) / msPerDay,
+      (targetMonday.getTime() - currentMonday.getTime()) / msPerDay,
   );
   return Math.round(diffDays / 7);
 }
 
 export function ParticipantTimingSelection({
-  proposedBlocks,
-  onSubmit,
-  errorMessage,
-  successMessage,
-  isSubmitting,
-}: ParticipantTimingSelectionProps) {
-  // Inicjalizowanie kalendarza na tygodniu, w którym wypada pierwszy proposed_block
+                                             proposedBlocks,
+                                             onSubmit,
+                                             errorMessage,
+                                             successMessage,
+                                             isSubmitting,
+                                           }: ParticipantTimingSelectionProps) {
   const initialOffset = useMemo(() => {
     if (!proposedBlocks || proposedBlocks.length === 0) return 0;
     const validDates = proposedBlocks
-      .map((b) => new Date(b.start_time))
-      .filter((d) => !Number.isNaN(d.getTime()));
+        .map((b) => new Date(b.start_time))
+        .filter((d) => !Number.isNaN(d.getTime()));
 
     if (validDates.length === 0) return 0;
 
-    // Szukamy najwcześniejszej daty
     const earliestDate = new Date(
-      Math.min(...validDates.map((d) => d.getTime())),
+        Math.min(...validDates.map((d) => d.getTime())),
     );
     return getWeekOffsetFromDate(earliestDate);
   }, [proposedBlocks]);
 
   const [slotsByWeek, setSlotsByWeek] = useState<Map<number, Set<string>>>(
-    new Map(),
+      new Map(),
   );
   const [weekOffset, setWeekOffset] = useState<number>(initialOffset);
 
@@ -151,34 +148,33 @@ export function ParticipantTimingSelection({
   const [dragDidMove, setDragDidMove] = useState(false);
   const [dragMode, setDragMode] = useState<"add" | "remove">("add");
 
-  // Jeśli initialOffset zmieni się po załadowaniu danych asynchronicznych, aktualizujemy widok
   useEffect(() => {
     setWeekOffset(initialOffset);
   }, [initialOffset]);
 
   const selectedSlots = slotsByWeek.get(weekOffset) || new Set<string>();
   const totalSelectedSlots = Array.from(slotsByWeek.values()).reduce(
-    (sum, set) => sum + set.size,
-    0,
+      (sum, set) => sum + set.size,
+      0,
   );
 
   const parsedProposedBlocks = useMemo(
-    () =>
-      proposedBlocks
-        .map((block) => {
-          const start = new Date(block.start_time);
-          const end = new Date(block.end_time);
-          if (
-            Number.isNaN(start.getTime()) ||
-            Number.isNaN(end.getTime()) ||
-            end <= start
-          ) {
-            return null;
-          }
-          return { start, end };
-        })
-        .filter((block): block is { start: Date; end: Date } => Boolean(block)),
-    [proposedBlocks],
+      () =>
+          proposedBlocks
+              .map((block) => {
+                const start = new Date(block.start_time);
+                const end = new Date(block.end_time);
+                if (
+                    Number.isNaN(start.getTime()) ||
+                    Number.isNaN(end.getTime()) ||
+                    end <= start
+                ) {
+                  return null;
+                }
+                return { start, end };
+              })
+              .filter((block): block is { start: Date; end: Date } => Boolean(block)),
+      [proposedBlocks],
   );
 
   const weekRange = useMemo(() => getWeekDateRange(weekOffset), [weekOffset]);
@@ -194,8 +190,8 @@ export function ParticipantTimingSelection({
       date.setDate(date.getDate() + i);
       const dayOfWeek = date.getDay();
       const dayKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
-        dayOfWeek
-      ] as DayKey;
+          dayOfWeek
+          ] as DayKey;
       days.push({
         key: dayKey,
         day: dayLabels[dayKey],
@@ -214,9 +210,8 @@ export function ParticipantTimingSelection({
     }
 
     const slotEnd = new Date(slotStart.getTime() + 15 * 60 * 1000);
-    // Zmieniona logika na przecięcie (overlap), bo backend zwraca nieregularne sekundy (np. 01:05:25)
     return parsedProposedBlocks.some(
-      (block) => slotStart < block.end && slotEnd > block.start,
+        (block) => slotStart < block.end && slotEnd > block.start,
     );
   };
 
@@ -243,9 +238,9 @@ export function ParticipantTimingSelection({
   };
 
   const applySelectionRectangle = (
-    start: { dayIndex: number; timeIndex: number },
-    end: { dayIndex: number; timeIndex: number },
-    mode: "add" | "remove",
+      start: { dayIndex: number; timeIndex: number },
+      end: { dayIndex: number; timeIndex: number },
+      mode: "add" | "remove",
   ) => {
     const minDay = Math.min(start.dayIndex, end.dayIndex);
     const maxDay = Math.max(start.dayIndex, end.dayIndex);
@@ -290,10 +285,10 @@ export function ParticipantTimingSelection({
     const minTime = Math.min(dragStart.timeIndex, dragCurrent.timeIndex);
     const maxTime = Math.max(dragStart.timeIndex, dragCurrent.timeIndex);
     return (
-      dayIndex >= minDay &&
-      dayIndex <= maxDay &&
-      timeIndex >= minTime &&
-      timeIndex <= maxTime
+        dayIndex >= minDay &&
+        dayIndex <= maxDay &&
+        timeIndex >= minTime &&
+        timeIndex <= maxTime
     );
   };
 
@@ -327,9 +322,9 @@ export function ParticipantTimingSelection({
 
     setDragCurrent({ dayIndex, timeIndex });
     if (
-      !dragStart ||
-      dragStart.dayIndex !== dayIndex ||
-      dragStart.timeIndex !== timeIndex
+        !dragStart ||
+        dragStart.dayIndex !== dayIndex ||
+        dragStart.timeIndex !== timeIndex
     ) {
       setDragDidMove(true);
     }
@@ -378,51 +373,51 @@ export function ParticipantTimingSelection({
 
     const ranges: TimeBlockPayload[] = [];
     Array.from(slotsByDate.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .forEach(([dateKey, indices]) => {
-        const ordered = Array.from(new Set(indices)).sort((a, b) => a - b);
-        if (ordered.length === 0) {
-          return;
-        }
-
-        const pushRange = (startIndex: number, endIndexExclusive: number) => {
-          const startDate = slotDateFromKey(dateKey, startIndex);
-          const endDate = slotDateFromKey(dateKey, endIndexExclusive);
-          if (!startDate || !endDate) {
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([dateKey, indices]) => {
+          const ordered = Array.from(new Set(indices)).sort((a, b) => a - b);
+          if (ordered.length === 0) {
             return;
           }
 
-          ranges.push({
-            start_time: startDate.toISOString(),
-            end_time: endDate.toISOString(),
-          });
-        };
+          const pushRange = (startIndex: number, endIndexExclusive: number) => {
+            const startDate = slotDateFromKey(dateKey, startIndex);
+            const endDate = slotDateFromKey(dateKey, endIndexExclusive);
+            if (!startDate || !endDate) {
+              return;
+            }
 
-        let start = ordered[0];
-        let prev = ordered[0];
-        for (let i = 1; i < ordered.length; i++) {
-          const current = ordered[i];
-          if (current === prev + 1) {
+            ranges.push({
+              start_time: startDate.toISOString(),
+              end_time: endDate.toISOString(),
+            });
+          };
+
+          let start = ordered[0];
+          let prev = ordered[0];
+          for (let i = 1; i < ordered.length; i++) {
+            const current = ordered[i];
+            if (current === prev + 1) {
+              prev = current;
+              continue;
+            }
+
+            pushRange(start, prev + 1);
+            start = current;
             prev = current;
-            continue;
           }
 
           pushRange(start, prev + 1);
-          start = current;
-          prev = current;
-        }
-
-        pushRange(start, prev + 1);
-      });
+        });
 
     return ranges;
   }, [slotsByWeek]);
 
   const isTileSelectedForRender = (
-    dayIndex: number,
-    timeIndex: number,
-    isSelected: boolean,
-    isAllowed: boolean,
+      dayIndex: number,
+      timeIndex: number,
+      isSelected: boolean,
+      isAllowed: boolean,
   ) => {
     if (!isAllowed) {
       return false;
@@ -440,212 +435,208 @@ export function ParticipantTimingSelection({
   };
 
   return (
-    <form className="space-y-8" onSubmit={handleFormSubmit}>
-      <section>
-        <h2 className="font-headline text-2xl font-medium text-on-surface mb-8 border-b border-outline-variant/20 pb-4">
-          Select your availability
-        </h2>
-        <p className="font-body text-sm text-on-surface-variant mb-6">
-          Click on available time slots to mark your availability across the
-          week.{" "}
-          {totalSelectedSlots > 0 && (
-            <span className="text-primary font-medium">
-              ({totalSelectedSlots} slots selected)
+      <form className="space-y-8" onSubmit={handleFormSubmit}>
+        <section>
+          <h2 className="font-headline text-2xl font-medium text-on-surface mb-8 border-b border-outline-variant/20 pb-4">
+            Wybierz swoją dostępność
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant mb-6">
+            Klikaj na dostępne okienka, aby zaznaczyć, kiedy możesz dołączyć.{" "}
+            {totalSelectedSlots > 0 && (
+                <span className="text-primary font-medium">
+              (Wybrano: {totalSelectedSlots})
             </span>
-          )}
-        </p>
+            )}
+          </p>
 
-        <div className="bg-surface-container-low rounded-xl p-4 md:p-6 shadow-[0px_0px_0px_1px_rgba(20,20,19,0.05)] overflow-hidden">
-          <div className="flex items-center justify-between mb-6 px-2">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setWeekOffset((w) => w - 1)}
-                className="p-2 rounded-full hover:bg-surface-container transition-colors"
-              >
+          <div className="bg-surface-container-low rounded-xl p-4 md:p-6 shadow-[0px_0px_0px_1px_rgba(20,20,19,0.05)] overflow-hidden">
+            <div className="flex items-center justify-between mb-6 px-2">
+              <div className="flex items-center gap-4">
+                <button
+                    type="button"
+                    onClick={() => setWeekOffset((w) => w - 1)}
+                    className="p-2 rounded-full hover:bg-surface-container transition-colors"
+                >
                 <span className="material-symbols-outlined text-on-surface-variant">
                   chevron_left
                 </span>
-              </button>
-              <h3 className="font-headline text-xl text-on-surface min-w-[200px] text-center">
-                {weekRange.display}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setWeekOffset((w) => w + 1)}
-                className="p-2 rounded-full hover:bg-surface-container transition-colors"
-              >
+                </button>
+                <h3 className="font-headline text-xl text-on-surface min-w-[200px] text-center">
+                  {weekRange.display}
+                </h3>
+                <button
+                    type="button"
+                    onClick={() => setWeekOffset((w) => w + 1)}
+                    className="p-2 rounded-full hover:bg-surface-container transition-colors"
+                >
                 <span className="material-symbols-outlined text-on-surface-variant">
                   chevron_right
                 </span>
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="date"
-                className="bg-surface-container-highest border border-outline-variant/20 rounded-lg px-3 py-2 text-on-surface text-sm focus:ring-2 focus:ring-primary transition-shadow font-body cursor-pointer"
-                onChange={(e) => {
-                  if (!e.target.value) {
-                    return;
-                  }
-
-                  const [year, month, day] = e.target.value
-                    .split("-")
-                    .map(Number);
-                  const selectedDate = new Date(year, month - 1, day);
-                  setWeekOffset(getWeekOffsetFromDate(selectedDate));
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setSlotsByWeek(new Map())}
-                className="px-3 py-2 rounded-lg bg-surface-container-highest hover:bg-secondary-container transition-colors text-on-surface text-sm font-medium"
-                title="Clear all selected slots"
-                disabled={totalSelectedSlots === 0 || isSubmitting}
-              >
-                Clear selected
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full">
-            <div className="w-full">
-              <div
-                className="grid gap-0"
-                style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
-              >
-                <div />
-                {weekDays.map((item) => (
-                  <div
-                    key={`${item.key}-${item.dateLabel}`}
-                    className="text-center"
-                  >
-                    <div className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">
-                      {item.day}
-                    </div>
-                    <div className="font-headline text-lg text-on-surface">
-                      {item.dateLabel}
-                    </div>
-                  </div>
-                ))}
+                </button>
               </div>
+              <div className="flex items-center gap-3">
+                <input
+                    type="date"
+                    className="bg-surface-container-highest border border-outline-variant/20 rounded-lg px-3 py-2 text-on-surface text-sm focus:ring-2 focus:ring-primary transition-shadow font-body cursor-pointer"
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        return;
+                      }
 
-              <div
-                className="relative grid gap-0 select-none"
-                style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
-                onMouseLeave={resetDragState}
-              >
-                <div className="space-y-0">
-                  {timeLabels.map((label) => (
-                    <div
-                      key={label}
-                      className="h-8 relative flex items-center justify-end pr-4"
-                    >
-                      <span className="text-[9px] font-bold text-outline leading-none">
-                        {label}
-                      </span>
-                    </div>
+                      const [year, month, day] = e.target.value
+                          .split("-")
+                          .map(Number);
+                      const selectedDate = new Date(year, month - 1, day);
+                      setWeekOffset(getWeekOffsetFromDate(selectedDate));
+                    }}
+                />
+                <button
+                    type="button"
+                    onClick={() => setSlotsByWeek(new Map())}
+                    className="px-3 py-2 rounded-lg bg-surface-container-highest hover:bg-secondary-container transition-colors text-on-surface text-sm font-medium"
+                    title="Wyczyść wszystkie zaznaczenia"
+                    disabled={totalSelectedSlots === 0 || isSubmitting}
+                >
+                  Wyczyść
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full">
+              <div className="w-full">
+                <div
+                    className="grid gap-0"
+                    style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+                >
+                  <div />
+                  {weekDays.map((item) => (
+                      <div
+                          key={`${item.key}-${item.dateLabel}`}
+                          className="text-center"
+                      >
+                        <div className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">
+                          {item.day}
+                        </div>
+                        <div className="font-headline text-lg text-on-surface">
+                          {item.dateLabel}
+                        </div>
+                      </div>
                   ))}
                 </div>
 
-                {weekDays.map((dayInfo, dayIndex) => (
-                  <div
-                    key={`${dayInfo.key}-grid`}
-                    className="border-l border-[rgba(137,114,107,0.15)] grid gap-0"
-                    style={{
-                      gridTemplateRows: `repeat(${timeLabels.length}, 1fr)`,
-                    }}
-                  >
-                    {timeLabels.map((_, timeIndex) => {
-                      const key = slotKey(getDateKey(dayInfo.date), timeIndex);
-                      const isSelected = selectedSlots.has(key);
-                      const isAllowed = isSlotAllowed(dayInfo.date, timeIndex);
-                      const isRenderedSelected = isTileSelectedForRender(
-                        dayIndex,
-                        timeIndex,
-                        isSelected,
-                        isAllowed,
-                      );
-
-                      // ZMIANA: Ukrycie i wyłączenie kafelków, które nie wpadają w proposed_blocks.
-                      // Pusty, przezroczysty div pozwalający na utrzymanie struktury siatki kalendarza.
-                      if (!isAllowed) {
-                        return (
-                          <div
-                            key={key}
-                            className="h-8 w-full border-b border-[rgba(137,114,107,0.05)] bg-transparent pointer-events-none"
-                          />
-                        );
-                      }
-
-                      // ZMIANA: Renderowanie tylko dostępnych przycisków
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleTileMouseDown(dayIndex, timeIndex);
-                          }}
-                          onMouseEnter={() =>
-                            handleTileMouseEnter(dayIndex, timeIndex)
-                          }
-                          onMouseUp={() =>
-                            handleTileMouseUp(dayIndex, timeIndex)
-                          }
-                          className={`h-8 w-full transition-colors border-b border-[rgba(137,114,107,0.15)] ${
-                            isRenderedSelected
-                              ? "bg-primary hover:bg-primary/90 cursor-pointer"
-                              : "bg-surface-container-highest hover:bg-secondary-container cursor-pointer shadow-sm border-x border-outline/10"
-                          }`}
-                        />
-                      );
-                    })}
+                <div
+                    className="relative grid gap-0 select-none"
+                    style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+                    onMouseLeave={resetDragState}
+                >
+                  <div className="space-y-0">
+                    {timeLabels.map((label) => (
+                        <div
+                            key={label}
+                            className="h-8 relative flex items-center justify-end pr-4"
+                        >
+                      <span className="text-[9px] font-bold text-outline leading-none">
+                        {label}
+                      </span>
+                        </div>
+                    ))}
                   </div>
-                ))}
+
+                  {weekDays.map((dayInfo, dayIndex) => (
+                      <div
+                          key={`${dayInfo.key}-grid`}
+                          className="border-l border-[rgba(137,114,107,0.15)] grid gap-0"
+                          style={{
+                            gridTemplateRows: `repeat(${timeLabels.length}, 1fr)`,
+                          }}
+                      >
+                        {timeLabels.map((_, timeIndex) => {
+                          const key = slotKey(getDateKey(dayInfo.date), timeIndex);
+                          const isSelected = selectedSlots.has(key);
+                          const isAllowed = isSlotAllowed(dayInfo.date, timeIndex);
+                          const isRenderedSelected = isTileSelectedForRender(
+                              dayIndex,
+                              timeIndex,
+                              isSelected,
+                              isAllowed,
+                          );
+
+                          if (!isAllowed) {
+                            return (
+                                <div
+                                    key={key}
+                                    className="h-8 w-full border-b border-[rgba(137,114,107,0.05)] bg-transparent pointer-events-none"
+                                />
+                            );
+                          }
+
+                          return (
+                              <button
+                                  key={key}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleTileMouseDown(dayIndex, timeIndex);
+                                  }}
+                                  onMouseEnter={() =>
+                                      handleTileMouseEnter(dayIndex, timeIndex)
+                                  }
+                                  onMouseUp={() =>
+                                      handleTileMouseUp(dayIndex, timeIndex)
+                                  }
+                                  className={`h-8 w-full transition-colors border-b border-[rgba(137,114,107,0.15)] ${
+                                      isRenderedSelected
+                                          ? "bg-primary hover:bg-primary/90 cursor-pointer"
+                                          : "bg-surface-container-highest hover:bg-secondary-container cursor-pointer shadow-sm border-x border-outline/10"
+                                  }`}
+                              />
+                          );
+                        })}
+                      </div>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {!hasAllowedSlots && (
+                <p className="mt-6 text-center text-sm text-on-surface-variant italic">
+                  Brak dostępnych bloków czasowych dla tego spotkania.
+                </p>
+            )}
+            {hasAllowedSlots && totalSelectedSlots === 0 && (
+                <p className="mt-6 text-center text-sm text-on-surface-variant italic">
+                  Zaznacz odpowiednie terminy, aby zapisać swoją dostępność.
+                </p>
+            )}
+            {selectedSlots.size === 0 && totalSelectedSlots > 0 && (
+                <p className="mt-6 text-center text-sm text-on-surface-variant italic">
+                  W tym tygodniu nic nie wybrano. Wybierz inną datę.
+                </p>
+            )}
           </div>
+        </section>
 
-          {!hasAllowedSlots && (
-            <p className="mt-6 text-center text-sm text-on-surface-variant italic">
-              No proposed time blocks are available for this meeting.
+        {errorMessage && (
+            <p className="rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
+              {errorMessage}
             </p>
-          )}
-          {hasAllowedSlots && totalSelectedSlots === 0 && (
-            <p className="mt-6 text-center text-sm text-on-surface-variant italic">
-              Select time slots to submit your availability.
+        )}
+        {successMessage && (
+            <p className="rounded-lg border border-[#2f6f3e]/20 bg-[#2f6f3e]/10 px-4 py-3 text-sm text-[#1f4f2b]">
+              {successMessage}
             </p>
-          )}
-          {selectedSlots.size === 0 && totalSelectedSlots > 0 && (
-            <p className="mt-6 text-center text-sm text-on-surface-variant italic">
-              This week has no selections. Select time slots above or choose
-              another week.
-            </p>
-          )}
+        )}
+
+        {/* ZAKTUALIZOWANY PRZYCISK "SAVE" */}
+        <div className="flex justify-end">
+          <button
+              type="submit"
+              className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting || !hasAllowedSlots}
+          >
+            {isSubmitting ? "Zapisywanie..." : "Zapisz"}
+          </button>
         </div>
-      </section>
-
-      {errorMessage && (
-        <p className="rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
-          {errorMessage}
-        </p>
-      )}
-      {successMessage && (
-        <p className="rounded-lg border border-[#2f6f3e]/20 bg-[#2f6f3e]/10 px-4 py-3 text-sm text-[#1f4f2b]">
-          {successMessage}
-        </p>
-      )}
-
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          className="bg-primary text-on-primary px-[26px] py-[12px] rounded font-label font-medium text-sm hover:bg-primary-container transition-colors duration-300 scale-100 active:scale-[0.98] ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] disabled:opacity-60 disabled:cursor-not-allowed"
-          disabled={isSubmitting || !hasAllowedSlots}
-        >
-          {isSubmitting ? "Saving availability..." : "Submit availability"}
-        </button>
-      </div>
-    </form>
+      </form>
   );
 }

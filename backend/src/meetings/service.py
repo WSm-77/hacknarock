@@ -232,25 +232,38 @@ class MeetingService:
         return cls._meeting_response(meeting)
 
     @classmethod
-    def get_meeting_for_organizer(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> MeetingDetailsResponse:
+    def get_meeting_for_organizer(
+        cls, db: Session, meeting_id: UUID, organizer: UserORM
+    ) -> MeetingDetailsResponse:
         meeting = db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
         if not meeting:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Meeting nie istnieje"
+            )
         if meeting.organizer_id != organizer.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Brak dostepu"
+            )
 
         cls._touch_deadline_transition(db, meeting)
 
-        votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
+        votes = (
+            db.query(ParticipantVoteORM)
+            .filter(ParticipantVoteORM.meeting_id == meeting.id)
+            .all()
+        )
+
+        # Zmiana tutaj: Usuwamy if'a, bierzemy wszystkie głosy!
         participant_availabilities = [
-            cls._participant_availability_response(vote)
-            for vote in votes
-            if vote.participant_id != organizer.id
+            cls._participant_availability_response(vote) for vote in votes
         ]
+
         data = cls._meeting_response(meeting)
         return MeetingDetailsResponse(
             **data.model_dump(),
-            votes_count=len(votes),
+            votes_count=len(
+                participant_availabilities
+            ),  # Zabezpieczenie: liczymy przefiltrowaną/gotową tablicę
             participant_availabilities=participant_availabilities,
         )
 
