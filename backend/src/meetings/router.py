@@ -9,6 +9,7 @@ from ..database.session import get_db
 from .domain import (
     MeetingCreateRequest,
     MeetingDetailsResponse,
+    MeetingJoinResponse,
     MeetingResponse,
     MeetingUpdateRequest,
     MeetingVoteRequest,
@@ -30,6 +31,10 @@ def create_meeting(
     return MeetingService.create_meeting(
         db=db,
         organizer=current_user,
+        meeting_title=payload.meeting_title,
+        duration_minutes=payload.duration_minutes,
+        location=payload.location,
+        description=payload.description,
         proposed_blocks=payload.proposed_blocks,
         availability_deadline=payload.availability_deadline,
     )
@@ -46,6 +51,10 @@ def update_meeting(
         db=db,
         meeting_id=meeting_id,
         organizer=current_user,
+        meeting_title=payload.meeting_title,
+        duration_minutes=payload.duration_minutes,
+        location=payload.location,
+        description=payload.description,
         proposed_blocks=payload.proposed_blocks,
         availability_deadline=payload.availability_deadline,
     )
@@ -58,6 +67,15 @@ def get_meeting_details(
     current_user: UserORM = Depends(get_current_user),
 ):
     return MeetingService.get_meeting_for_organizer(db=db, meeting_id=meeting_id, organizer=current_user)
+
+
+@router.get("/join/{public_token}", response_model=MeetingJoinResponse)
+def get_meeting_by_public_link(
+    public_token: str,
+    db: Session = Depends(get_db),
+    _: UserORM = Depends(get_current_user),
+):
+    return MeetingService.get_meeting_by_public_token(db=db, public_token=public_token)
 
 
 @router.get("/{meeting_id}/details", response_model=MeetingDetailsResponse)

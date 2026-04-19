@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 import secrets
 
@@ -7,10 +7,27 @@ from sqlalchemy.orm import Session
 
 from ..database.models import MeetingORM, ParticipantVoteORM, UserORM
 from .common import ParticipantAvailability, TimeBlock
-from .domain import MeetingDetailsResponse, MeetingResponse, MeetingStatus, TriggerAIResponse
+from .domain import (
+    MeetingDetailsResponse,
+    MeetingJoinResponse,
+    MeetingResponse,
+    MeetingStatus,
+    ParticipantAvailabilityResponse,
+    TriggerAIResponse,
+)
 
 
 class MeetingService:
+    @staticmethod
+    def _utc_now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    @staticmethod
+    def _normalize_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     @staticmethod
     def _to_timeblocks(raw_blocks: list[dict]) -> list[TimeBlock]:
         return [TimeBlock(**block) for block in raw_blocks]
@@ -31,6 +48,68 @@ class MeetingService:
         return user.email
 
     @classmethod
+    def _is_fully_contained_in_any_proposed_block(
+        cls,
+        submitted_block: TimeBlock,
+        proposed_blocks: list[TimeBlock],
+    ) -> bool:
+        """
+        Check whether a submitted block fits entirely inside one proposed block.
+
+        Args:
+            submitted_block: The participant-submitted time block to validate.
+            proposed_blocks: The organizer-proposed blocks allowed for selection.
+
+        Returns:
+            bool: True when the submitted block is fully contained in at least one proposed block.
+
+        Raises:
+            None.
+        """
+        submitted_start = cls._normalize_utc(submitted_block.start_time)
+        submitted_end = cls._normalize_utc(submitted_block.end_time)
+        return any(
+            cls._normalize_utc(proposed_block.start_time) <= submitted_start
+            and submitted_end <= cls._normalize_utc(proposed_block.end_time)
+            for proposed_block in proposed_blocks
+        )
+
+    @classmethod
+    def _validate_participant_blocks_within_proposed(
+        cls,
+        availability: ParticipantAvailability,
+        proposed_blocks: list[TimeBlock],
+    ) -> None:
+        """
+        Reject participant availability blocks that fall outside proposed meeting blocks.
+
+        Args:
+            availability: The participant availability payload to validate.
+            proposed_blocks: The organizer-proposed blocks allowed for selection.
+
+        Returns:
+            None: The method only validates and raises on invalid input.
+
+        Raises:
+            HTTPException: Raised with HTTP 400 when any available or maybe block is out of range.
+        """
+        submitted_blocks = [*availability.available_blocks, *availability.maybe_blocks]
+        for block in submitted_blocks:
+            if not cls._is_fully_contained_in_any_proposed_block(block, proposed_blocks):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Przeslane przedzialy musza miescic sie w zaproponowanych terminach",
+                )
+
+    @classmethod
+    def _participant_availability_response(cls, vote: ParticipantVoteORM) -> ParticipantAvailabilityResponse:
+        return ParticipantAvailabilityResponse(
+            participant_id=vote.participant_id,
+            available_blocks=cls._to_timeblocks(vote.available_blocks),
+            maybe_blocks=cls._to_timeblocks(vote.maybe_blocks),
+        )
+
+    @classmethod
     def _resolve_organizer_name(cls, db: Session, organizer_id: str) -> str | None:
         organizer = db.query(UserORM).filter(UserORM.id == organizer_id).first()
         return cls._format_user_display_name(organizer)
@@ -48,6 +127,25 @@ class MeetingService:
             duration_minutes=meeting.duration_minutes,
             is_draft=meeting.is_draft,
             created_at=meeting.created_at,
+            meeting_title=meeting.meeting_title,
+            duration_minutes=meeting.duration_minutes,
+            location=meeting.location,
+            description=meeting.description,
+            status=MeetingStatus(meeting.status),
+            availability_deadline=meeting.availability_deadline,
+            proposed_blocks=cls._to_timeblocks(meeting.proposed_blocks),
+            public_link=f"/meetings/join/{meeting.public_token}",
+            ai_recommendation=meeting.ai_recommendation,
+        )
+
+    @classmethod
+    def _meeting_join_response(cls, meeting: MeetingORM) -> MeetingJoinResponse:
+        return MeetingJoinResponse(
+            id=meeting.id,
+            meeting_title=meeting.meeting_title,
+            duration_minutes=meeting.duration_minutes,
+            location=meeting.location,
+            description=meeting.description,
             status=MeetingStatus(meeting.status),
             availability_deadline=meeting.availability_deadline,
             proposed_blocks=meeting.proposed_blocks,
@@ -57,9 +155,10 @@ class MeetingService:
 
     @staticmethod
     def _touch_deadline_transition(meeting: MeetingORM) -> bool:
+        deadline = MeetingService._normalize_utc(meeting.availability_deadline)
         if (
             meeting.status == MeetingStatus.COLLECTING_AVAILABILITY.value
-            and datetime.utcnow() >= meeting.availability_deadline
+            and MeetingService._utc_now() >= deadline
         ):
             meeting.status = MeetingStatus.READY_FOR_AI.value
             return True
@@ -70,10 +169,15 @@ class MeetingService:
         cls,
         db: Session,
         organizer: UserORM,
+        meeting_title: str,
+        duration_minutes: int,
+        location: str,
+        description: str | None,
         proposed_blocks: list[TimeBlock],
         availability_deadline: datetime,
     ) -> MeetingResponse:
-        if availability_deadline <= datetime.utcnow():
+        normalized_deadline = cls._normalize_utc(availability_deadline)
+        if normalized_deadline <= cls._utc_now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Deadline must be in the future.",
@@ -81,8 +185,12 @@ class MeetingService:
 
         meeting = MeetingORM(
             organizer_id=organizer.id,
+            meeting_title=meeting_title,
+            duration_minutes=duration_minutes,
+            location=location,
+            description=description,
             status=MeetingStatus.COLLECTING_AVAILABILITY.value,
-            availability_deadline=availability_deadline,
+            availability_deadline=normalized_deadline,
             proposed_blocks=cls._serialize_timeblocks(proposed_blocks),
             public_token=secrets.token_urlsafe(16),
         )
@@ -97,6 +205,10 @@ class MeetingService:
         db: Session,
         meeting_id: UUID,
         organizer: UserORM,
+        meeting_title: str,
+        duration_minutes: int,
+        location: str,
+        description: str | None,
         proposed_blocks: list[TimeBlock],
         availability_deadline: datetime,
     ) -> MeetingResponse:
@@ -112,14 +224,19 @@ class MeetingService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Cannot edit after availability collection has finished.",
             )
-        if availability_deadline <= datetime.utcnow():
+        normalized_deadline = cls._normalize_utc(availability_deadline)
+        if normalized_deadline <= cls._utc_now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Deadline must be in the future.",
             )
 
+        meeting.meeting_title = meeting_title
+        meeting.duration_minutes = duration_minutes
+        meeting.location = location
+        meeting.description = description
         meeting.proposed_blocks = cls._serialize_timeblocks(proposed_blocks)
-        meeting.availability_deadline = availability_deadline
+        meeting.availability_deadline = normalized_deadline
         db.commit()
         db.refresh(meeting)
         return cls._meeting_response(meeting, organizer_name=cls._format_user_display_name(organizer))
@@ -180,6 +297,18 @@ class MeetingService:
             auto_find_venue=meeting.auto_find_venue,
             venue_recommendations_count=meeting.venue_recommendations_count,
         )
+        votes = db.query(ParticipantVoteORM).filter(ParticipantVoteORM.meeting_id == meeting.id).all()
+        participant_availabilities = [
+            cls._participant_availability_response(vote)
+            for vote in votes
+            if vote.participant_id != organizer.id
+        ]
+        data = cls._meeting_response(meeting)
+        return MeetingDetailsResponse(
+            **data.model_dump(),
+            votes_count=len(votes),
+            participant_availabilities=participant_availabilities,
+        )
 
     @classmethod
     def submit_participant_availability(
@@ -204,6 +333,11 @@ class MeetingService:
                 detail="Availability collection is closed.",
             )
 
+        cls._validate_participant_blocks_within_proposed(
+            availability=availability,
+            proposed_blocks=cls._to_timeblocks(meeting.proposed_blocks),
+        )
+
         vote = (
             db.query(ParticipantVoteORM)
             .filter(
@@ -222,6 +356,19 @@ class MeetingService:
         db.refresh(meeting)
         organizer_name = cls._resolve_organizer_name(db=db, organizer_id=meeting.organizer_id)
         return cls._meeting_response(meeting, organizer_name=organizer_name)
+
+    @classmethod
+    def get_meeting_by_public_token(cls, db: Session, public_token: str) -> MeetingJoinResponse:
+        meeting = db.query(MeetingORM).filter(MeetingORM.public_token == public_token).first()
+        if not meeting:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieprawidlowy link")
+
+        changed = cls._touch_deadline_transition(meeting)
+        if changed:
+            db.commit()
+            db.refresh(meeting)
+
+        return cls._meeting_join_response(meeting)
 
     @classmethod
     def trigger_ai_recommendation(cls, db: Session, meeting_id: UUID, organizer: UserORM) -> TriggerAIResponse:
