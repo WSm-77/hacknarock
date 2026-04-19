@@ -15,11 +15,15 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { pathname } = useLocation();
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const isRootDetailsRoute = pathSegments.length === 2 && pathSegments[1] === 'details';
   const isStandaloneRoute =
     pathname === '/' ||
     pathname === '/create' ||
     pathname === '/login' ||
     pathname === '/logging' ||
+    pathname.startsWith('/meeting/') ||
+    isRootDetailsRoute ||
     pathname.startsWith('/vote/');
 
   if (isStandaloneRoute) {

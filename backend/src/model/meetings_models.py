@@ -71,15 +71,25 @@ class MeetingVoteRequest(BaseModel):
 class MeetingResponse(BaseModel):
     id: UUID
     organizer_id: UUID
+    organizer_name: str | None = None
+    title: str
+    description: str | None = None
+    location: str | None = None
+    participants_count: int | None = None
+    duration_minutes: int | None = None
+    is_draft: bool = False
+    created_at: datetime | None = None
     status: MeetingStatus
     availability_deadline: datetime
-    proposed_blocks: list[TimeBlock]
+    proposed_blocks: list[dict[str, Any]]
     public_link: str
     ai_recommendation: str | None = None
 
 
 class MeetingDetailsResponse(MeetingResponse):
     votes_count: int
+    auto_find_venue: bool = False
+    venue_recommendations_count: int | None = None
 
 
 class TriggerAIResponse(BaseModel):
