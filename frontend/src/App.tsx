@@ -26,6 +26,9 @@ function App() {
           <Route path="/vote/:pollId" element={<ParticipationPage />} />
 
           {/* Results Management */}
+          <Route path="/:meetingId/details" element={<MeetingDetails />} />
+          <Route path="/:meetingId" element={<MeetingDetails />} />
+          <Route path="/meeting/:meetingId/details" element={<MeetingDetails />} />
           <Route path="/meeting/:meetingId" element={<MeetingDetails />} />
 
           {/* Catch-all */}

@@ -1,12 +1,20 @@
 import type { MeetingTab } from './types';
+import type { MeetingDetailsData } from './types';
 import { agendaItems, MEETING_DECOR_IMAGE, MEETING_VENUE_IMAGE } from './data';
 
 interface MeetingDetailsTabsProps {
   activeTab: MeetingTab;
   onTabChange: (tab: MeetingTab) => void;
+  details?: MeetingDetailsData | null;
 }
 
-export function MeetingDetailsTabs({ activeTab, onTabChange }: MeetingDetailsTabsProps) {
+function formatBlockLabel(startTime: string, endTime: string): string {
+  return `${startTime} - ${endTime}`;
+}
+
+export function MeetingDetailsTabs({ activeTab, onTabChange, details }: MeetingDetailsTabsProps) {
+  const proposedItems = details?.proposed_blocks ?? [];
+
   return (
     <section className="bg-surface-container-low py-16 px-6 border-t border-outline-variant/20">
       <div className="max-w-4xl mx-auto">
@@ -64,7 +72,9 @@ export function MeetingDetailsTabs({ activeTab, onTabChange }: MeetingDetailsTab
             <div className="flex justify-between items-start mb-10">
               <div>
                 <h2 className="font-headline text-3xl text-on-surface mb-2 font-medium">Minutes of the Meeting</h2>
-                <p className="font-body text-on-surface-variant">The proposed sequence of events.</p>
+                <p className="font-body text-on-surface-variant">
+                  {details?.description?.trim() || 'The proposed sequence of events.'}
+                </p>
               </div>
               <button className="text-primary/60 hover:text-primary transition-colors" type="button">
                 <span className="material-symbols-outlined">edit_note</span>
@@ -73,18 +83,32 @@ export function MeetingDetailsTabs({ activeTab, onTabChange }: MeetingDetailsTab
 
             <div className="ledger-line pt-4">
               <ul className="space-y-0">
-                {agendaItems.map((item) => (
-                  <li key={item.time} className="flex gap-8 group">
-                    <span className="font-serif italic text-2xl text-primary/80 w-24 shrink-0 text-right">{item.time}</span>
-                    <span className="font-headline text-xl text-on-surface py-1">{item.title}</span>
-                  </li>
-                ))}
+                {proposedItems.length > 0
+                  ? proposedItems.map((item, index) => (
+                      <li key={`${item.start_time}-${item.end_time}-${index}`} className="flex gap-8 group">
+                        <span className="font-serif italic text-2xl text-primary/80 w-40 shrink-0 text-right">{formatBlockLabel(item.start_time, item.end_time)}</span>
+                        <span className="font-headline text-xl text-on-surface py-1">
+                          {details?.status === 'ai_recommended' ? 'Recommended window' : 'Proposed window'}
+                        </span>
+                      </li>
+                    ))
+                  : agendaItems.map((item) => (
+                      <li key={item.time} className="flex gap-8 group">
+                        <span className="font-serif italic text-2xl text-primary/80 w-24 shrink-0 text-right">{item.time}</span>
+                        <span className="font-headline text-xl text-on-surface py-1">{item.title}</span>
+                      </li>
+                    ))}
               </ul>
             </div>
           </div>
 
           <div className={`tab-content space-y-6 animate-in fade-in duration-500${activeTab === 'venues' ? ' active' : ''}`} id="venues" role="tabpanel" aria-labelledby="btn-venues">
             <h2 className="font-headline text-3xl text-on-surface font-medium mb-8">Selected Accommodations</h2>
+            <p className="font-body text-on-surface-variant mb-6">
+              {details?.location
+                ? `Preferred location: ${details.location}${details.participants_count ? ` · ${details.participants_count} participants` : ''}`
+                : 'No preferred location provided yet.'}
+            </p>
             <div className="grid grid-cols-1 gap-8">
               <div className="bg-surface-bright rounded-lg overflow-hidden flex flex-col sm:row border border-outline-variant/20 hover:border-primary/30 transition-all group">
                 <div className="sm:w-56 h-48 sm:h-auto overflow-hidden">
@@ -96,7 +120,9 @@ export function MeetingDetailsTabs({ activeTab, onTabChange }: MeetingDetailsTab
                       <h3 className="font-headline text-2xl text-on-surface font-medium">The Archive Room</h3>
                       <span className="font-body text-xs tracking-widest uppercase text-on-surface-variant">0.4 MILES AWAY</span>
                     </div>
-                    <p className="font-body text-body-lg text-on-surface-variant mb-6">A quiet sanctuary with ample desk space and refined coffee. Ideal for the focused agenda we&apos;ve set.</p>
+                    <p className="font-body text-body-lg text-on-surface-variant mb-6">
+                      {details?.ai_recommendation ?? 'A quiet sanctuary with ample desk space and refined coffee. Ideal for the focused agenda we&apos;ve set.'}
+                    </p>
                   </div>
                   <button className="self-start text-primary font-headline text-lg font-medium flex items-center gap-2 group-hover:translate-x-1 transition-transform" type="button">
                     Initiate Reservation <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -112,9 +138,18 @@ export function MeetingDetailsTabs({ activeTab, onTabChange }: MeetingDetailsTab
               <button className="absolute top-6 right-6 text-on-surface-variant hover:text-primary transition-colors" type="button">
                 <span className="material-symbols-outlined">content_copy</span>
               </button>
-              <p className="mb-6 pb-4 border-b border-outline-variant/10 font-medium text-on-surface">Subject: Notice of Meeting | Tuesday, Oct 12th</p>
+              <p className="mb-6 pb-4 border-b border-outline-variant/10 font-medium text-on-surface">
+                Subject: Notice of Meeting | {details?.title || (details?.id ? `Meeting ${details.id.slice(0, 8)}` : 'Tuesday, Oct 12th')}
+              </p>
               <p className="mb-4">Salutations,</p>
-              <p className="mb-4">I wish to confirm a reservation for a party of four on Tuesday, the 12th of October, at 2:00 PM. We anticipate a session of collaborative work and discussion.</p>
+              <p className="mb-4">
+                I wish to confirm a reservation for {details?.participants_count ? `a party of approximately ${details.participants_count}` : 'the proposed participant group'} on the preferred meeting schedule.
+              </p>
+              <p className="mb-4">
+                {details?.location
+                  ? `The preferred location is ${details.location}.`
+                  : 'A venue will be selected based on the final meeting details.'}
+              </p>
               <p className="mb-8">Your hospitality is much appreciated.</p>
               <p className="font-serif italic text-on-surface">Regards,<br />[Your Name]</p>
             </div>

@@ -12,7 +12,6 @@ from .domain import (
     MeetingResponse,
     MeetingUpdateRequest,
     MeetingVoteRequest,
-    TriggerAIResponse,
 )
 from .service import MeetingService
 
@@ -52,13 +51,21 @@ def update_meeting(
     )
 
 
-@router.get("/{meeting_id}", response_model=MeetingDetailsResponse)
+@router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting_details(
     meeting_id: UUID,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
     return MeetingService.get_meeting_for_organizer(db=db, meeting_id=meeting_id, organizer=current_user)
+
+
+@router.get("/{meeting_id}/details", response_model=MeetingDetailsResponse)
+def get_meeting_details_page(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return MeetingService.get_meeting_details_public(db=db, meeting_id=meeting_id)
 
 
 @router.post("/join/{public_token}/availability", response_model=MeetingResponse)
@@ -74,12 +81,3 @@ def submit_availability(
         participant=current_user,
         availability=payload.availability,
     )
-
-
-@router.post("/{meeting_id}/ai-recommendation", response_model=TriggerAIResponse)
-def trigger_ai_recommendation(
-    meeting_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: UserORM = Depends(get_current_user),
-):
-    return MeetingService.trigger_ai_recommendation(db=db, meeting_id=meeting_id, organizer=current_user)
