@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch } from "./client";
 
 export interface DashboardMeeting {
   meeting_id: string;
@@ -33,27 +33,6 @@ export interface DashboardResponse {
   recent_meetings: DashboardMeeting[];
   polls: DashboardPoll[];
   calendar_meetings: DashboardCalendarMeeting[];
-}
-
-export interface CreateMeetingPayload {
-  title: string;
-  description?: string;
-  organizer_name?: string;
-  is_draft?: boolean;
-  duration_minutes?: number;
-  location?: string;
-  participants_count?: number;
-  expiration?: string;
-  auto_venue?: boolean;
-  venue_recommendations_count?: number;
-  proposed_blocks?: Array<Record<string, string>>;
-}
-
-export interface CreateMeetingResponse {
-  meeting_id: string;
-  poll_id: string;
-  status: string;
-  message: string;
 }
 
 export interface PollOption {
@@ -109,27 +88,25 @@ export interface MeetingDetailsResponse {
 }
 
 export function fetchDashboard(): Promise<DashboardResponse> {
-  return apiFetch<DashboardResponse>('/api/dashboard');
-}
-
-export function createMeeting(payload: CreateMeetingPayload): Promise<CreateMeetingResponse> {
-  return apiFetch<CreateMeetingResponse>('/api/meetings', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiFetch<DashboardResponse>("/api/dashboard");
 }
 
 export function fetchPoll(pollId: string): Promise<PollResponse> {
   return apiFetch<PollResponse>(`/api/polls/${pollId}`);
 }
 
-export function submitPollVote(pollId: string, payload: VotePayload): Promise<VoteResponse> {
+export function submitPollVote(
+  pollId: string,
+  payload: VotePayload,
+): Promise<VoteResponse> {
   return apiFetch<VoteResponse>(`/api/polls/${pollId}/votes`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function fetchMeetingDetails(meetingId: string): Promise<MeetingDetailsResponse> {
+export function fetchMeetingDetails(
+  meetingId: string,
+): Promise<MeetingDetailsResponse> {
   return apiFetch<MeetingDetailsResponse>(`/meetings/${meetingId}/details`);
 }

@@ -25,7 +25,8 @@ export function Layout({ children }: LayoutProps) {
     pathname === '/logging' ||
     pathname.startsWith('/meeting/') ||
     isRootDetailsRoute ||
-    pathname.startsWith('/vote/');
+    pathname.startsWith('/vote/') ||
+    pathname.startsWith('/meetings/join/');
 
   if (isStandaloneRoute) {
     return <>{children}</>;

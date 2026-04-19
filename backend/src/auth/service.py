@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 from typing import cast
@@ -78,7 +78,7 @@ class UserService:
         session = AuthSessionORM(
             user_id=user.id,
             token=UserService.hash_session_token(raw_token),
-            expires_at=datetime.utcnow() + timedelta(hours=hours_valid),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=hours_valid),
         )
         db.add(session)
         db.commit()
@@ -98,7 +98,7 @@ class UserService:
     @staticmethod
     def get_user_by_token(db: Session, token: str) -> UserORM | None:
         token_hash = UserService.hash_session_token(token)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session = (
             db.query(AuthSessionORM)
             .filter(AuthSessionORM.token == token_hash, AuthSessionORM.expires_at > now)
