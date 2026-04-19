@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from main import _get_cors_origins, app
+from src.api_integration.models import CreateMeetingRequestDTO
 from src.api_integration.service import integration_store
 
 
@@ -22,6 +23,123 @@ def test_dashboard_is_available():
     assert "upcoming_meetings" in payload
     assert "open_polls" in payload
     assert isinstance(payload["recent_meetings"], list)
+    assert "polls" in payload
+    assert "calendar_meetings" in payload
+    assert isinstance(payload["polls"], list)
+    assert isinstance(payload["calendar_meetings"], list)
+
+
+def test_dashboard_polls_include_waiting_for_acceptance_and_exclude_draft() -> None:
+    """Dashboard polls should include active poll states and omit draft meetings."""
+    client = TestClient(app)
+
+    waiting = integration_store.create_meeting(CreateMeetingRequestDTO(title="Waiting poll"))
+    draft = integration_store.create_meeting(CreateMeetingRequestDTO(title="Draft poll"))
+
+    waiting_id = waiting.meeting_id
+    draft_id = draft.meeting_id
+    waiting_poll_id = waiting.poll_id
+    draft_poll_id = draft.poll_id
+
+    try:
+        with integration_store._lock:
+            integration_store._meetings[str(waiting_id)]["status"] = "waiting_for_acceptance"
+            integration_store._meetings[str(draft_id)]["status"] = "draft"
+
+        response = client.get("/api/dashboard")
+
+        assert response.status_code == 200
+        payload = response.json()
+        polls = payload["polls"]
+
+        waiting_poll = next((poll for poll in polls if poll["meeting_id"] == str(waiting_id)), None)
+        assert waiting_poll is not None
+        assert waiting_poll["status"] == "waiting_for_acceptance"
+
+        draft_poll = next((poll for poll in polls if poll["meeting_id"] == str(draft_id)), None)
+        assert draft_poll is None
+    finally:
+        with integration_store._lock:
+            integration_store._meetings.pop(str(waiting_id), None)
+            integration_store._meetings.pop(str(draft_id), None)
+            integration_store._polls.pop(str(waiting_poll_id), None)
+            integration_store._polls.pop(str(draft_poll_id), None)
+
+
+def test_dashboard_calendar_meetings_include_waiting_for_acceptance_and_exclude_draft() -> None:
+    """Calendar meetings should include waiting states and filter out drafts."""
+    client = TestClient(app)
+
+    waiting = integration_store.create_meeting(CreateMeetingRequestDTO(title="Waiting calendar", duration_minutes=90))
+    draft = integration_store.create_meeting(CreateMeetingRequestDTO(title="Draft calendar"))
+
+    waiting_id = waiting.meeting_id
+    draft_id = draft.meeting_id
+    waiting_poll_id = waiting.poll_id
+    draft_poll_id = draft.poll_id
+
+    try:
+        with integration_store._lock:
+            integration_store._meetings[str(waiting_id)]["status"] = "waiting_for_acceptance"
+            integration_store._meetings[str(draft_id)]["status"] = "draft"
+
+        response = client.get("/api/dashboard")
+
+        assert response.status_code == 200
+        payload = response.json()
+        calendar_meetings = payload["calendar_meetings"]
+
+        waiting_calendar = next(
+            (meeting for meeting in calendar_meetings if meeting["meeting_id"] == str(waiting_id)),
+            None,
+        )
+        assert waiting_calendar is not None
+        assert waiting_calendar["status"] == "waiting_for_acceptance"
+        assert set(waiting_calendar.keys()) == {"meeting_id", "title", "status", "start_at", "end_at"}
+        assert waiting_calendar["start_at"] < waiting_calendar["end_at"]
+
+        draft_calendar = next(
+            (meeting for meeting in calendar_meetings if meeting["meeting_id"] == str(draft_id)),
+            None,
+        )
+        assert draft_calendar is None
+    finally:
+        with integration_store._lock:
+            integration_store._meetings.pop(str(waiting_id), None)
+            integration_store._meetings.pop(str(draft_id), None)
+            integration_store._polls.pop(str(waiting_poll_id), None)
+            integration_store._polls.pop(str(draft_poll_id), None)
+
+
+def test_dashboard_polls_contract_contains_expected_fields() -> None:
+    """Dashboard poll entries should keep a stable contract for frontend mapping."""
+    client = TestClient(app)
+
+    created = integration_store.create_meeting(CreateMeetingRequestDTO(title="Poll contract"))
+    meeting_id = created.meeting_id
+    poll_id = created.poll_id
+
+    try:
+        response = client.get("/api/dashboard")
+
+        assert response.status_code == 200
+        payload = response.json()
+        poll_entry = next((poll for poll in payload["polls"] if poll["meeting_id"] == str(meeting_id)), None)
+
+        assert poll_entry is not None
+        assert set(poll_entry.keys()) == {
+            "meeting_id",
+            "poll_id",
+            "title",
+            "status",
+            "participants",
+            "created_at",
+        }
+        assert poll_entry["poll_id"] == str(poll_id)
+    finally:
+        with integration_store._lock:
+            integration_store._meetings.pop(str(meeting_id), None)
+            integration_store._polls.pop(str(poll_id), None)
 
 
 def test_meeting_creation_poll_fetch_and_voting_flow():
@@ -217,6 +335,98 @@ def test_vote_rejects_new_voters_after_capacity(monkeypatch) -> None:
     assert first_vote.status_code == 200
     assert second_vote.status_code == 200
     assert blocked_vote.status_code == 429
+
+
+def test_vote_anonymous_voters_respect_capacity(monkeypatch) -> None:
+    """Anonymous votes should still be bounded by per-poll voter capacity."""
+    client = TestClient(app)
+
+    monkeypatch.setattr(integration_store, "MAX_VOTERS_PER_POLL", 2)
+
+    create_response = client.post(
+        "/api/meetings",
+        json={
+            "title": "Anonymous capacity",
+            "description": "Abuse guard",
+            "organizer_name": "Wiktor",
+        },
+    )
+    poll_id = create_response.json()["poll_id"]
+
+    poll_response = client.get(f"/api/polls/{poll_id}")
+    option_id = poll_response.json()["options"][0]["option_id"]
+
+    first_vote = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_id},
+    )
+    second_vote = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_id},
+    )
+    blocked_vote = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_id},
+    )
+
+    assert first_vote.status_code == 200
+    assert second_vote.status_code == 200
+    assert blocked_vote.status_code == 429
+
+
+def test_vote_allows_existing_voter_to_change_choice_when_capacity_reached(monkeypatch) -> None:
+    """Existing voters should be able to update their vote even after voter capacity is reached."""
+    client = TestClient(app)
+
+    monkeypatch.setattr(integration_store, "MAX_VOTERS_PER_POLL", 1)
+
+    create_response = client.post(
+        "/api/meetings",
+        json={
+            "title": "Vote update at capacity",
+            "description": "Constraint check",
+            "organizer_name": "Wiktor",
+        },
+    )
+    poll_id = create_response.json()["poll_id"]
+
+    poll_response = client.get(f"/api/polls/{poll_id}")
+    option_a = poll_response.json()["options"][0]["option_id"]
+    option_b = poll_response.json()["options"][1]["option_id"]
+
+    first_vote = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_a, "voter_id": "voter-1"},
+    )
+    updated_vote = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_b, "voter_id": "voter-1"},
+    )
+    blocked_new_voter = client.post(
+        f"/api/polls/{poll_id}/votes",
+        json={"option_id": option_b, "voter_id": "voter-2"},
+    )
+
+    assert first_vote.status_code == 200
+    assert updated_vote.status_code == 200
+    assert updated_vote.json()["total_votes"] == 1
+    assert blocked_new_voter.status_code == 429
+
+
+def test_create_meeting_rejects_too_many_proposed_blocks() -> None:
+    """Large proposed_blocks payloads should be rejected to limit resource abuse."""
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/meetings",
+        json={
+            "title": "Payload limits",
+            "description": "Validation test",
+            "proposed_blocks": [{"day": "MON", "time": "10:00 AM"}] * 201,
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_cors_origin_env_filters_wildcard_and_invalid(monkeypatch) -> None:

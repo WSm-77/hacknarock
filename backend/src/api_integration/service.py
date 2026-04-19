@@ -14,6 +14,19 @@ class IntegrationService:
         return self._repository.create_meeting(payload)
 
     def get_dashboard(self) -> DashboardResponseDTO:
+        """
+        Return the dashboard contract consumed by the frontend.
+
+        Args:
+            None: This method delegates to the configured repository.
+
+        Returns:
+            DashboardResponseDTO: Dashboard counters, recent meetings,
+            polls, and calendar_meetings.
+
+        Raises:
+            Any: Propagates repository errors unchanged.
+        """
         return self._repository.get_dashboard()
 
     def get_poll(self, poll_id: UUID) -> PollResponseDTO:

@@ -1,11 +1,13 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 from uuid import UUID, uuid4
 
 from ..models import (
     CreateMeetingRequestDTO,
     CreateMeetingResponseDTO,
+    DashboardCalendarMeetingDTO,
     DashboardMeetingDTO,
+    DashboardPollDTO,
     DashboardResponseDTO,
     PollOptionDTO,
     PollResponseDTO,
@@ -19,6 +21,7 @@ class IntegrationInMemoryStore:
     MAX_MEETINGS = 500
     MAX_POLLS = 500
     MAX_VOTERS_PER_POLL = 1000
+    LIVE_POLL_STATUSES = frozenset({"collecting_votes", "waiting_for_acceptance", "confirmed", "scheduled"})
 
     def __init__(self) -> None:
         self._lock = Lock()
@@ -48,6 +51,7 @@ class IntegrationInMemoryStore:
                 "participants": 0,
                 "created_at": now,
                 "poll_id": poll_id,
+                "duration_minutes": payload.duration_minutes or 60,
             }
 
             self._polls[str(poll_id)] = {
@@ -66,6 +70,22 @@ class IntegrationInMemoryStore:
             )
 
     def get_dashboard(self) -> DashboardResponseDTO:
+        """
+        Build the dashboard payload from in-memory meetings and polls.
+
+        The payload includes deterministic `polls` and `calendar_meetings`
+        collections used directly by the frontend dashboard.
+
+        Args:
+            None: This method reads current in-memory repository state.
+
+        Returns:
+            DashboardResponseDTO: Aggregated counters, recent meetings,
+            visible live polls, and deterministic calendar windows.
+
+        Raises:
+            None.
+        """
         with self._lock:
             meetings = list(self._meetings.values())
             recent_meetings = sorted(
@@ -85,11 +105,38 @@ class IntegrationInMemoryStore:
                 for meeting in recent_meetings
             ]
 
+            polls = [
+                DashboardPollDTO(
+                    meeting_id=meeting["meeting_id"],
+                    poll_id=meeting.get("poll_id"),
+                    title=meeting["title"],
+                    status=meeting["status"],
+                    participants=meeting["participants"],
+                    created_at=meeting["created_at"],
+                )
+                for meeting in sorted(meetings, key=lambda meeting: meeting["created_at"], reverse=True)
+                if meeting["status"] != "draft" and meeting["status"] in self.LIVE_POLL_STATUSES
+            ]
+
+            calendar_meetings = [
+                DashboardCalendarMeetingDTO(
+                    meeting_id=meeting["meeting_id"],
+                    title=meeting["title"],
+                    status=meeting["status"],
+                    start_at=meeting["created_at"],
+                    end_at=meeting["created_at"] + timedelta(minutes=int(meeting.get("duration_minutes") or 60)),
+                )
+                for meeting in sorted(meetings, key=lambda meeting: meeting["created_at"])
+                if meeting["status"] != "draft"
+            ]
+
             return DashboardResponseDTO(
-                active_meetings=sum(1 for meeting in meetings if meeting["status"] != "closed"),
+                active_meetings=sum(1 for meeting in meetings if meeting["status"] not in {"closed", "draft"}),
                 upcoming_meetings=sum(1 for meeting in meetings if meeting["status"] == "scheduled"),
-                open_polls=len(self._polls),
+                open_polls=len(polls),
                 recent_meetings=dashboard_meetings,
+                polls=polls,
+                calendar_meetings=calendar_meetings,
             )
 
     def get_poll(self, poll_id: UUID) -> PollResponseDTO:
@@ -128,7 +175,8 @@ class IntegrationInMemoryStore:
             if poll is None:
                 raise KeyError("poll_not_found")
 
-            is_new_voter = voter_id is not None and voter_id not in poll["votes_by_voter"]
+            resolved_voter_id = voter_id or str(uuid4())
+            is_new_voter = resolved_voter_id not in poll["votes_by_voter"]
             if is_new_voter and len(poll["votes_by_voter"]) >= self.MAX_VOTERS_PER_POLL:
                 raise OverflowError("poll_voter_capacity_reached")
 
@@ -139,7 +187,6 @@ class IntegrationInMemoryStore:
             if selected_option is None:
                 raise ValueError("invalid_option")
 
-            resolved_voter_id = voter_id or str(uuid4())
             previous_option_id = poll["votes_by_voter"].get(resolved_voter_id)
 
             if previous_option_id and previous_option_id != option_id:

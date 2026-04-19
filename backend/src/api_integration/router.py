@@ -1,9 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from ..database.session import get_db
+from fastapi import APIRouter, HTTPException, status
 from .models import (
     CreateMeetingRequestDTO,
     CreateMeetingResponseDTO,
@@ -12,7 +9,6 @@ from .models import (
     VoteRequestDTO,
     VoteResponseDTO,
 )
-from .repositories.database_repository import IntegrationDatabaseRepository
 from .service import integration_service
 
 router = APIRouter(prefix="/api", tags=["Integration"])
@@ -29,15 +25,22 @@ def get_dashboard() -> DashboardResponseDTO:
     response_model=CreateMeetingResponseDTO,
     status_code=status.HTTP_201_CREATED,
 )
-def create_meeting(payload: CreateMeetingRequestDTO, db: Session = Depends(get_db)) -> CreateMeetingResponseDTO:
-    """Tworzy spotkanie i zapisuje je w bazie danych."""
+def create_meeting(payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO:
+    """Creates a lightweight integration meeting and opens a poll in memory."""
     try:
-        return IntegrationDatabaseRepository(db).create_meeting(payload)
+        return integration_service.create_meeting(payload)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except OverflowError as exc:
+        if str(exc) == "integration_store_capacity_reached":
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Integration store capacity reached",
+            ) from exc
+        raise
 
 
 @router.get("/polls/{poll_id}", response_model=PollResponseDTO)
