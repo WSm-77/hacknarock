@@ -97,3 +97,10 @@ VITE_API_BASE_URL=http://localhost:8000
 - Logout clears local auth session data (`localStorage` auth session key and related auth/session UI data).
 - Duplicate email (`400`) is shown as a field-level email error.
 - Invalid or missing fields are blocked by frontend checks and backend validation.
+
+## Participant Availability and Slot Constraints
+
+- Join flow reads `GET /meetings/join/{public_token}` data where `proposed_blocks` are canonical ISO datetime ranges (`start_time`/`end_time`).
+- Integration create flow sends organizer `proposed_blocks` that are normalized by backend to canonical datetime ranges for consistent persistence.
+- Integration create payload supports up to 100 organizer `proposed_blocks`.
+- Participant selection is limited to organizer-proposed slots in UI, and backend additionally validates that submitted availability is a subset of those slots.

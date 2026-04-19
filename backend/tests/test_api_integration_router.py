@@ -283,8 +283,28 @@ def test_create_meeting_rejects_extra_fields(integration_client) -> None:
     assert response.status_code == 422
 
 
-def test_vote_rejects_invalid_option_id_format(integration_client) -> None:
-    client, _ = integration_client
+def test_create_meeting_returns_429_when_capacity_reached(monkeypatch) -> None:
+    """Meeting creation should fail with 429 once store capacity limits are hit."""
+    client = TestClient(app)
+
+    monkeypatch.setattr(integration_store, "MAX_MEETINGS", 0)
+
+    response = client.post(
+        "/api/meetings",
+        json={
+            "title": "Capacity lock",
+            "description": "Validation test",
+            "organizer_name": "Wiktor",
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "Integration store capacity reached"
+
+
+def test_vote_rejects_invalid_option_id_format() -> None:
+    """Option IDs containing unsafe characters should be rejected."""
+    client = TestClient(app)
 
     create_response = client.post(
         "/api/meetings",

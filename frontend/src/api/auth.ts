@@ -40,6 +40,8 @@ export interface StoredAuthSession {
 }
 
 const AUTH_SESSION_STORAGE_KEY = 'snapslot.auth.session';
+const ACCESS_TOKEN_STORAGE_KEY = 'snapslot:access-token';
+const USER_EMAIL_STORAGE_KEY = 'snapslot:user-email';
 const MEETING_POLL_MAPPING_KEY = 'snapslot:meeting-poll-map';
 const LAST_CREATED_SHARE_LINK_KEY = 'snapslot:last-created-share-link';
 
@@ -75,6 +77,9 @@ export function saveAuthSession(session: LoginResponse): void {
   };
 
   window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(storedSession));
+  // Keep legacy keys in sync for modules still reading direct token/email values.
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, session.access_token);
+  window.localStorage.setItem(USER_EMAIL_STORAGE_KEY, session.user.email);
 }
 
 export function loadAuthSession(): StoredAuthSession | null {
@@ -124,6 +129,8 @@ export function clearAuthSession(): void {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(USER_EMAIL_STORAGE_KEY);
   window.sessionStorage.removeItem(MEETING_POLL_MAPPING_KEY);
   window.sessionStorage.removeItem(LAST_CREATED_SHARE_LINK_KEY);
 }

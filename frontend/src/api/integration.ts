@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch } from "./client";
 
 export interface DashboardMeeting {
   meeting_id: string;
@@ -46,7 +46,12 @@ export interface CreateMeetingPayload {
   expiration?: string;
   auto_venue?: boolean;
   venue_recommendations_count?: number;
-  proposed_blocks?: Array<Record<string, string>>;
+  proposed_blocks?: Array<{
+    day: string;
+    time?: string;
+    start_time?: string;
+    end_time?: string;
+  }>;
 }
 
 export interface CreateMeetingResponse {
@@ -109,12 +114,14 @@ export interface MeetingDetailsResponse {
 }
 
 export function fetchDashboard(): Promise<DashboardResponse> {
-  return apiFetch<DashboardResponse>('/api/dashboard');
+  return apiFetch<DashboardResponse>("/api/dashboard");
 }
 
-export function createMeeting(payload: CreateMeetingPayload): Promise<CreateMeetingResponse> {
-  return apiFetch<CreateMeetingResponse>('/api/meetings', {
-    method: 'POST',
+export function createMeeting(
+  payload: CreateMeetingPayload,
+): Promise<CreateMeetingResponse> {
+  return apiFetch<CreateMeetingResponse>("/api/meetings", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -123,9 +130,12 @@ export function fetchPoll(pollId: string): Promise<PollResponse> {
   return apiFetch<PollResponse>(`/api/polls/${pollId}`);
 }
 
-export function submitPollVote(pollId: string, payload: VotePayload): Promise<VoteResponse> {
+export function submitPollVote(
+  pollId: string,
+  payload: VotePayload,
+): Promise<VoteResponse> {
   return apiFetch<VoteResponse>(`/api/polls/${pollId}/votes`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }

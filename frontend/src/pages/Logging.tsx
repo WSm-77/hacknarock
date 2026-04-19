@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { loadAuthSession, login, register, saveAuthSession } from '../api/auth';
 import { LoggingCard } from '../components/logging/LoggingCard';
@@ -77,6 +77,7 @@ function parseOptionalCoordinate(
 
 export function Logging() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mode, setMode] = useState<LoggingMode>('login');
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
@@ -88,6 +89,15 @@ export function Logging() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const redirectPath = (() => {
+    const state = location.state as { from?: unknown } | null;
+    const from = state?.from;
+    if (typeof from === 'string' && from.startsWith('/')) {
+      return from;
+    }
+
+    return '/';
+  })();
 
   useEffect(() => {
     document.title = 'SnapSlot | Enter the Study';
@@ -95,9 +105,9 @@ export function Logging() {
 
   useEffect(() => {
     if (loadAuthSession()) {
-      navigate('/', { replace: true });
+      navigate(redirectPath, { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, redirectPath]);
 
   function clearFieldError(field: keyof ValidationErrors) {
     setValidationErrors((current) => {
@@ -234,7 +244,7 @@ export function Logging() {
         saveAuthSession(response);
       }
 
-      navigate('/', { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       if (error instanceof ApiError) {
         const detail = error.detail || '';
