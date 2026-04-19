@@ -1,0 +1,428 @@
+.meeting-confirmation-page {
+  --mc-primary: #9a4021;
+  --mc-text: #1b1c18;
+  --mc-muted: #56423c;
+  --mc-bg: #fbf9f2;
+  --mc-panel: #ffffff;
+  --mc-panel-soft: #f5f4ed;
+  --mc-border: #e3e3dc;
+  --mc-shadow: 0 12px 32px -4px rgba(86, 66, 60, 0.08);
+
+  min-height: 100%;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+}
+
+.meeting-confirmation-page .mc-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.meeting-confirmation-page .mc-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(251, 249, 242, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(20, 20, 19, 0.07);
+}
+
+.meeting-confirmation-page .mc-topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 86px;
+}
+
+.meeting-confirmation-page .mc-brand {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--mc-primary);
+  font-size: 1.5rem;
+}
+
+.meeting-confirmation-page .mc-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.meeting-confirmation-page .mc-nav a {
+  color: var(--mc-muted);
+  font-size: 0.95rem;
+}
+
+.meeting-confirmation-page .mc-nav a:first-child {
+  color: var(--mc-primary);
+  font-weight: 600;
+}
+
+.meeting-confirmation-page .mc-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meeting-confirmation-page .mc-topbar-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--mc-muted);
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+}
+
+.meeting-confirmation-page .mc-topbar-actions img {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.meeting-confirmation-page .mc-main {
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+
+.meeting-confirmation-page .mc-hero {
+  text-align: center;
+  margin-bottom: 72px;
+}
+
+.meeting-confirmation-page .mc-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--mc-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.meeting-confirmation-page .mc-hero h1 {
+  margin: 12px 0 24px;
+  font-family: var(--serif);
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  font-weight: 500;
+}
+
+.meeting-confirmation-page .mc-hero-card {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--mc-shadow);
+}
+
+.meeting-confirmation-page .mc-hero-card p {
+  color: var(--mc-muted);
+}
+
+.meeting-confirmation-page .mc-hero-card h2 {
+  margin-top: 14px;
+  margin-bottom: 18px;
+  font-family: var(--serif);
+  color: var(--mc-primary);
+  font-size: clamp(1.6rem, 2.3vw, 2.2rem);
+}
+
+.meeting-confirmation-page .mc-hero-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meeting-confirmation-page .mc-primary-btn,
+.meeting-confirmation-page .mc-secondary-btn {
+  border-radius: 10px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.meeting-confirmation-page .mc-primary-btn {
+  background: var(--mc-primary);
+  color: #fff;
+}
+
+.meeting-confirmation-page .mc-secondary-btn {
+  background: #e2e0d1;
+  color: #464137;
+}
+
+.meeting-confirmation-page .mc-venues,
+.meeting-confirmation-page .mc-agenda {
+  margin-bottom: 72px;
+}
+
+.meeting-confirmation-page .mc-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--mc-border);
+  padding-bottom: 12px;
+}
+
+.meeting-confirmation-page .mc-section-header h3 {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.meeting-confirmation-page .mc-section-header span,
+.meeting-confirmation-page .mc-section-header p {
+  color: var(--mc-muted);
+  font-size: 0.9rem;
+}
+
+.meeting-confirmation-page .mc-venues-layout {
+  display: grid;
+  grid-template-columns: 1.75fr 1fr;
+  gap: 24px;
+}
+
+.meeting-confirmation-page .mc-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.meeting-confirmation-page .mc-venue-card {
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.meeting-confirmation-page .mc-venue-card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  display: block;
+}
+
+.meeting-confirmation-page .mc-venue-content {
+  padding: 14px;
+}
+
+.meeting-confirmation-page .mc-venue-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meeting-confirmation-page .mc-venue-title-row h4 {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.meeting-confirmation-page .mc-venue-title-row span {
+  background: #d7e7d3;
+  color: #3c4a3b;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  padding: 4px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.meeting-confirmation-page .mc-venue-content p {
+  margin: 10px 0 14px;
+  color: var(--mc-muted);
+  font-style: italic;
+  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+.meeting-confirmation-page .mc-venue-content button {
+  width: 100%;
+  border: 1px solid #d8d7cf;
+  background: #efeee7;
+  color: #49473f;
+  border-radius: 9px;
+  padding: 9px;
+}
+
+.meeting-confirmation-page .mc-map-panel {
+  background: #efeee7;
+  border: 1px solid var(--mc-border);
+  border-radius: 14px;
+  padding: 12px;
+  align-self: start;
+  position: sticky;
+  top: 102px;
+}
+
+.meeting-confirmation-page .mc-map-panel img {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.meeting-confirmation-page .mc-map-panel p {
+  margin-top: 10px;
+  color: var(--mc-muted);
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.meeting-confirmation-page .mc-agenda {
+  background: #efeee7;
+  border: 1px solid var(--mc-border);
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.meeting-confirmation-page .mc-section-header-wide button {
+  background: var(--mc-panel);
+  border: 1px solid #d9d8d1;
+  color: var(--mc-muted);
+  border-radius: 10px;
+  padding: 10px 16px;
+}
+
+.meeting-confirmation-page .mc-agenda ol {
+  list-style: none;
+}
+
+.meeting-confirmation-page .mc-agenda-item {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #ddd8cc;
+}
+
+.meeting-confirmation-page .mc-agenda-item:first-child {
+  border-top: 0;
+}
+
+.meeting-confirmation-page .mc-step {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #e3e3dc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #57564e;
+  font-weight: 700;
+}
+
+.meeting-confirmation-page .mc-step-active {
+  background: var(--mc-primary);
+  color: #fff;
+}
+
+.meeting-confirmation-page .mc-agenda-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.meeting-confirmation-page .mc-agenda-title-row h4 {
+  font-size: 1.02rem;
+}
+
+.meeting-confirmation-page .mc-agenda-title-row span {
+  font-size: 0.72rem;
+  background: #dcd9ce;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #555348;
+}
+
+.meeting-confirmation-page .mc-agenda-content p {
+  color: var(--mc-muted);
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.meeting-confirmation-page .mc-agenda-content label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #67655b;
+  font-weight: 600;
+}
+
+.meeting-confirmation-page .mc-footer {
+  border-top: 1px solid #dfded5;
+  background: #f5f4ed;
+  padding: 56px 0;
+  text-align: center;
+}
+
+.meeting-confirmation-page .mc-footer .mc-brand {
+  margin-bottom: 14px;
+}
+
+.meeting-confirmation-page .mc-footer-links {
+  display: inline-flex;
+  gap: 18px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.meeting-confirmation-page .mc-footer-links a {
+  color: var(--mc-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.meeting-confirmation-page .mc-footer p {
+  color: #726f65;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1023px) {
+  .meeting-confirmation-page .mc-nav {
+    display: none;
+  }
+
+  .meeting-confirmation-page .mc-venues-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .meeting-confirmation-page .mc-venues-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .meeting-confirmation-page .mc-map-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .meeting-confirmation-page .mc-container {
+    padding: 0 16px;
+  }
+
+  .meeting-confirmation-page .mc-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .meeting-confirmation-page .mc-topbar-inner {
+    min-height: 70px;
+  }
+
+  .meeting-confirmation-page .mc-brand {
+    font-size: 1.2rem;
+  }
+}
