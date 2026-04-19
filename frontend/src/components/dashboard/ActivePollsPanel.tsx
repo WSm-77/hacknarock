@@ -51,7 +51,7 @@ export function ActivePollsPanel({ polls, isLoading = false, openPollCount }: Ac
 
   return (
     <aside className="col-span-12 lg:col-span-3 space-y-8">
-      <section>
+      <section className="lg:max-h-[72vh] lg:overflow-y-auto lg:pr-2">
         <h2 className="font-serif text-2xl text-on-surface-variant mb-2">Active Polls</h2>
         {openPollCount !== undefined && (
           <p className="text-xs uppercase tracking-widest text-on-surface-variant/60 mb-4">{openPollCount} open</p>
