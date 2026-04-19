@@ -1,7 +1,7 @@
 const legendItems = [
-  { label: 'Confirmed Meetings', dotClassName: 'w-2.5 h-2.5 rounded-full bg-primary', itemClassName: '' },
-  { label: 'Study Blocks', dotClassName: 'w-2.5 h-2.5 rounded-full bg-tertiary', itemClassName: '' },
-  { label: 'External Feeds', dotClassName: 'w-2.5 h-2.5 rounded-full bg-outline-variant', itemClassName: 'opacity-30' },
+  { label: 'Collecting Votes', dotClassName: 'w-2.5 h-2.5 rounded-full bg-primary', itemClassName: '' },
+  { label: 'Finalized', dotClassName: 'w-2.5 h-2.5 rounded-full bg-emerald-500', itemClassName: '' },
+  { label: 'Other Statuses', dotClassName: 'w-2.5 h-2.5 rounded-full bg-outline', itemClassName: '' },
 ];
 
 export function DashboardLegend() {

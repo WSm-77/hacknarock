@@ -1,8 +1,5 @@
 import type { DashboardCalendarMeeting } from '../../api/integration';
-
-const START_HOUR = 8;
-const END_HOUR = 18;
-const ROW_HEIGHT = 64;
+import { useNavigate } from 'react-router-dom';
 
 interface CalendarBoardProps {
   calendarMeetings?: DashboardCalendarMeeting[];
@@ -34,22 +31,49 @@ function formatDayHeader(date: Date): { day: string; date: string; highlighted: 
   };
 }
 
-function formatTimeLabel(hour: number): string {
-  return new Date(2000, 0, 1, hour).toLocaleTimeString(undefined, {
+function formatTimeLabel(date: Date): string {
+  return date.toLocaleTimeString(undefined, {
     hour: 'numeric',
     minute: '2-digit',
   });
 }
 
+function toStatusLabel(status: string): string {
+  return status.replaceAll('_', ' ');
+}
+
+function statusClassNames(status: string): { card: string; accent: string; status: string } {
+  if (status === 'collecting_votes') {
+    return {
+      card: 'bg-primary/5 border-primary/20 hover:bg-primary/10',
+      accent: 'bg-primary',
+      status: 'text-primary',
+    };
+  }
+
+  if (status === 'finalized') {
+    return {
+      card: 'bg-emerald-50 border-emerald-200/80 hover:bg-emerald-100/80',
+      accent: 'bg-emerald-500',
+      status: 'text-emerald-700',
+    };
+  }
+
+  return {
+    card: 'bg-surface-container-low border-outline-variant/60 hover:bg-surface-container',
+    accent: 'bg-outline',
+    status: 'text-on-surface-variant',
+  };
+}
+
 export function CalendarBoard({ calendarMeetings = [], weekStart }: CalendarBoardProps) {
+  const navigate = useNavigate();
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(startOfDay(weekStart), index));
   const dayHeaders = weekDays.map(formatDayHeader);
   const visibleWeekStart = weekDays[0];
   const visibleWeekEnd = addDays(visibleWeekStart, 7);
-  const timeRows = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
-  const totalHeight = (END_HOUR - START_HOUR) * ROW_HEIGHT;
 
-  const positionedEvents = calendarMeetings
+  const groupedEvents = calendarMeetings
     .map((meeting) => {
       const start = new Date(meeting.start_at);
       const end = new Date(meeting.end_at);
@@ -68,34 +92,27 @@ export function CalendarBoard({ calendarMeetings = [], weekStart }: CalendarBoar
         return null;
       }
 
-      const startMinutes = start.getHours() * 60 + start.getMinutes();
-      const endMinutes = end.getHours() * 60 + end.getMinutes();
-      const clampedStartMinutes = Math.max(START_HOUR * 60, Math.min(startMinutes, END_HOUR * 60));
-      const clampedEndMinutes = Math.max(clampedStartMinutes + 15, Math.min(endMinutes, END_HOUR * 60));
-
-      const top = ((clampedStartMinutes - START_HOUR * 60) / 60) * ROW_HEIGHT;
-      const height = Math.max(26, ((clampedEndMinutes - clampedStartMinutes) / 60) * ROW_HEIGHT - 6);
-      const isPrimary = meeting.status === 'collecting_votes';
+      const style = statusClassNames(meeting.status);
 
       return {
         meeting,
-        top,
-        height,
-        left: `calc(${(dayIndex / 7) * 100}% + 6px)`,
-        width: `calc(${100 / 7}% - 12px)`,
-        className: isPrimary
-          ? 'bg-primary text-on-primary p-3 rounded-lg shadow-md z-20'
-          : 'bg-[#fdf2f0] border-l-2 border-primary p-3 rounded-r-lg shadow-sm z-10',
-        titleClassName: isPrimary ? 'text-xs font-bold truncate' : 'text-xs font-bold text-primary truncate',
-        detailClassName: isPrimary ? 'text-[10px] text-primary-fixed leading-tight mt-1' : 'text-[10px] text-primary-container leading-tight mt-1',
+        dayIndex,
+        start,
+        end,
+        className: style.card,
+        accentClassName: style.accent,
+        statusClassName: style.status,
       };
     })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((left, right) => left.start.getTime() - right.start.getTime());
+
+  const eventsByDay = weekDays.map((_, dayIndex) => groupedEvents.filter((event) => event.dayIndex === dayIndex));
 
   return (
     <div className="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] ring-1 ring-on-surface/5">
       <div className="calendar-grid bg-surface-container-low/50 border-b border-surface-variant/30">
-        <div className="p-4" />
+        <div className="p-4 text-[11px] uppercase tracking-widest text-on-surface-variant/60">Week</div>
         {dayHeaders.map((item, index) => (
           <div
             key={`${item.day}-${item.date}-${index}`}
@@ -111,39 +128,51 @@ export function CalendarBoard({ calendarMeetings = [], weekStart }: CalendarBoar
         ))}
       </div>
 
-      <div className="relative h-[600px] overflow-y-auto">
-        <div className="absolute inset-0 calendar-grid pointer-events-none"><div className="border-r border-surface-variant/10" />{weekDays.map((date, index) => {
-          const isToday = startOfDay(date).getTime() === startOfDay(new Date()).getTime();
-          return <div key={`${date.toISOString()}-${index}`} className={`border-r border-surface-variant/10 ${isToday ? 'bg-primary/[0.02]' : ''}`} />;
-        })}</div>
-        <div className="relative z-10">
-          {timeRows.map((hour) => (
-            <div key={hour} className="calendar-grid border-b border-surface-variant/10 group">
-              <div className="p-4 text-right text-[10px] font-label text-on-surface-variant/50 uppercase">{formatTimeLabel(hour)}</div>
-              <div className="col-span-7" style={{ height: `${ROW_HEIGHT}px` }} />
-            </div>
-          ))}
-          <div className="absolute top-0 left-[80px] right-0" style={{ height: `${totalHeight}px` }}>
-            {positionedEvents.map((event) => (
-              <div
-                key={`${event.meeting.meeting_id}-${event.meeting.start_at}`}
-                className={`absolute ${event.className}`}
-                style={{
-                  top: `${event.top}px`,
-                  left: event.left,
-                  width: event.width,
-                  height: `${event.height}px`,
-                }}
-              >
-                <h4 className={event.titleClassName}>{event.meeting.title}</h4>
-                <p className={event.detailClassName}>
-                  {new Date(event.meeting.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                  {' - '}
-                  {new Date(event.meeting.end_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                </p>
-              </div>
-            ))}
+      <div className="h-[600px] overflow-y-auto overflow-x-auto">
+        <div className="calendar-grid min-w-[920px]">
+          <div className="sticky left-0 z-10 bg-surface-container-lowest p-4 text-[11px] text-on-surface-variant/70 border-r border-surface-variant/20">
+            <p className="font-label uppercase tracking-widest">Card View</p>
+            <p className="mt-2 leading-relaxed">Compact daily cards. Tap a card to open details.</p>
           </div>
+          {eventsByDay.map((events, dayIndex) => {
+            const date = weekDays[dayIndex];
+            const isToday = startOfDay(date).getTime() === startOfDay(new Date()).getTime();
+
+            return (
+              <div
+                key={`${date.toISOString()}-${dayIndex}`}
+                className={`p-3 space-y-2 border-l border-surface-variant/15 ${isToday ? 'bg-primary/[0.015]' : ''}`}
+              >
+                {events.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-surface-variant/40 bg-surface-container-low/40 p-3 text-xs text-on-surface-variant/60">
+                    No meetings
+                  </div>
+                ) : (
+                  events.map((event) => (
+                    <button
+                      key={`${event.meeting.meeting_id}-${event.meeting.start_at}`}
+                      type="button"
+                      className={`w-full text-left rounded-xl border p-3 shadow-[0px_4px_12px_-8px_rgba(25,28,27,0.35)] transition-colors ${event.className}`}
+                      onClick={() => navigate(`/meeting/${event.meeting.meeting_id}`)}
+                    >
+                      <div className="flex gap-2 items-start">
+                        <span className={`mt-0.5 h-8 w-1 shrink-0 rounded-full ${event.accentClassName}`} />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold tracking-wide text-on-surface-variant">
+                            {formatTimeLabel(event.start)} - {formatTimeLabel(event.end)}
+                          </p>
+                          <h4 className="mt-1 text-sm font-semibold text-on-surface leading-tight line-clamp-2">{event.meeting.title}</h4>
+                          <p className={`mt-1 text-[10px] uppercase tracking-widest font-medium ${event.statusClassName}`}>
+                            {toStatusLabel(event.meeting.status)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
