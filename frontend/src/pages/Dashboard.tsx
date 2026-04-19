@@ -16,12 +16,61 @@ import { CalendarBoard } from '../components/dashboard/CalendarBoard';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { DashboardLegend } from '../components/dashboard/DashboardLegend';
 
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function startOfWeekMonday(date: Date): Date {
+  const current = startOfDay(date);
+  const day = current.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  return addDays(current, diffToMonday);
+}
+
+function formatWeekLabel(weekStart: Date, weekEnd: Date): string {
+  const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
+  const sameYear = weekStart.getFullYear() === weekEnd.getFullYear();
+
+  const startLabel = weekStart.toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+  });
+  const endLabel = weekEnd.toLocaleDateString(undefined, {
+    month: sameMonth ? undefined : 'long',
+    day: 'numeric',
+    year: sameYear ? 'numeric' : 'numeric',
+  });
+
+  if (!sameYear) {
+    const startWithYear = weekStart.toLocaleDateString(undefined, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    return `${startWithYear} - ${endLabel}`;
+  }
+
+  if (sameMonth) {
+    const month = weekStart.toLocaleDateString(undefined, { month: 'long' });
+    return `${month} ${weekStart.getDate()} - ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+  }
+
+  return `${startLabel} - ${endLabel}`;
+}
+
 export function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     let isCancelled = false;
@@ -105,6 +154,11 @@ export function Dashboard() {
     },
   ];
 
+  const baseWeekStart = startOfWeekMonday(new Date());
+  const visibleWeekStart = addDays(baseWeekStart, weekOffset * 7);
+  const visibleWeekEnd = addDays(visibleWeekStart, 6);
+  const weekLabel = formatWeekLabel(visibleWeekStart, visibleWeekEnd);
+
   return (
     <div className="min-h-screen flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed bg-[#fbf9f2] text-[#1b1c18]">
       <style>{`
@@ -157,7 +211,7 @@ export function Dashboard() {
         <ActivePollsPanel
           isLoading={isLoading}
           openPollCount={dashboard?.open_polls}
-          recentMeetings={dashboard?.recent_meetings}
+          polls={dashboard?.polls}
         />
 
         <section className="col-span-12 lg:col-span-9">
@@ -165,13 +219,20 @@ export function Dashboard() {
             activeMeetings={dashboard?.active_meetings}
             openPolls={dashboard?.open_polls}
             upcomingMeetings={dashboard?.upcoming_meetings}
+            weekLabel={weekLabel}
+            onPreviousWeek={() => setWeekOffset((current) => current - 1)}
+            onNextWeek={() => setWeekOffset((current) => current + 1)}
+            onToday={() => setWeekOffset(0)}
           />
           {errorMessage && (
             <p className="mb-4 rounded-lg border border-[#9a4021]/20 bg-[#9a4021]/5 px-4 py-3 text-sm text-[#9a4021]">
               {errorMessage}
             </p>
           )}
-          <CalendarBoard />
+          <CalendarBoard
+            calendarMeetings={dashboard?.calendar_meetings}
+            weekStart={visibleWeekStart}
+          />
           <DashboardLegend />
         </section>
       </main>
