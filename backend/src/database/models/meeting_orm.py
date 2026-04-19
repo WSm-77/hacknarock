@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from src.model.meetings_models import TimeBlock
@@ -19,7 +19,7 @@ class MeetingORM(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     is_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[MeetingStatus] = mapped_column(String(32), nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     availability_deadline: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     proposed_blocks: Mapped[list[TimeBlock]] = mapped_column(JSON, nullable=False, default=list)
     participants_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

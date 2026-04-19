@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..database.meeting_states import MeetingStatus
 
@@ -28,8 +28,16 @@ class TimeBlock(BaseModel):
     start_time: datetime
     end_time: datetime
 
+    @staticmethod
+    def _require_timezone_aware(value: datetime, field_name: str) -> datetime:
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise ValueError(f"{field_name} must include timezone information")
+        return value
+
     @model_validator(mode="after")
     def check_time_order(self) -> "TimeBlock":
+        self._require_timezone_aware(self.start_time, "start_time")
+        self._require_timezone_aware(self.end_time, "end_time")
         if self.start_time >= self.end_time:
             raise ValueError("Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.")
         return self
@@ -46,13 +54,6 @@ class ParticipantAvailability(BaseModel):
     coordinates: Coordinates | None = None
 
 
-class MeetingStatus(str, Enum):
-    COLLECTING_AVAILABILITY = "collecting_availability"
-    FINALIZED = "finalized"
-    READY_FOR_AI = "ready_for_ai"
-    AI_RECOMMENDED = "ai_recommended"
-
-
 class MeetingCreateRequest(BaseModel):
     meeting_title: str = Field(min_length=1, max_length=255)
     duration_minutes: int = Field(ge=1, le=1440)
@@ -60,6 +61,11 @@ class MeetingCreateRequest(BaseModel):
     description: str | None = None
     proposed_blocks: list[TimeBlock] = Field(min_length=1, max_length=100)
     availability_deadline: datetime
+
+    @field_validator("availability_deadline")
+    @classmethod
+    def validate_deadline_timezone_awareness(cls, value: datetime) -> datetime:
+        return TimeBlock._require_timezone_aware(value, "availability_deadline")
 
 
 class MeetingUpdateRequest(BaseModel):
@@ -70,6 +76,11 @@ class MeetingUpdateRequest(BaseModel):
     proposed_blocks: list[TimeBlock] = Field(min_length=1, max_length=100)
     availability_deadline: datetime
 
+    @field_validator("availability_deadline")
+    @classmethod
+    def validate_deadline_timezone_awareness(cls, value: datetime) -> datetime:
+        return TimeBlock._require_timezone_aware(value, "availability_deadline")
+
 
 class MeetingVoteRequest(BaseModel):
     availability: ParticipantAvailability
@@ -79,7 +90,7 @@ class MeetingResponse(BaseModel):
     id: UUID
     organizer_id: UUID
     organizer_name: str | None = None
-    title: str
+    meeting_title: str
     description: str | None = None
     location: str | None = None
     duration_minutes: int
@@ -101,7 +112,7 @@ class MeetingJoinResponse(BaseModel):
     description: str | None = None
     status: MeetingStatus
     availability_deadline: datetime
-    proposed_blocks: list[dict[str, Any]]
+    proposed_blocks: list[TimeBlock]
     public_link: str
     ai_recommendation: str | None = None
 

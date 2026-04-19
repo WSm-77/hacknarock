@@ -22,6 +22,7 @@ export function ParticipantAvailabilityPage() {
   const { publicToken } = useParams<{ publicToken: string }>();
   const [meeting, setMeeting] = useState<MeetingJoinResponse | null>(null);
   const [isMeetingLoading, setIsMeetingLoading] = useState(true);
+  const [isInvalidOrInactiveLink, setIsInvalidOrInactiveLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -29,10 +30,14 @@ export function ParticipantAvailabilityPage() {
 
   useEffect(() => {
     if (!publicToken) {
+      setIsMeetingLoading(false);
+      setIsInvalidOrInactiveLink(true);
       return;
     }
 
     let isMounted = true;
+
+    setIsInvalidOrInactiveLink(false);
 
     void fetchMeetingByPublicToken(publicToken)
       .then((meetingResponse) => {
@@ -48,6 +53,11 @@ export function ParticipantAvailabilityPage() {
             replace: true,
             state: { from: `/meetings/join/${publicToken}` },
           });
+          return;
+        }
+
+        if (isMounted) {
+          setIsInvalidOrInactiveLink(true);
         }
       })
       .finally(() => {
@@ -59,7 +69,7 @@ export function ParticipantAvailabilityPage() {
     return () => {
       isMounted = false;
     };
-  }, [navigate, publicToken]);
+  }, [publicToken]);
 
   const shouldRenderClosedState =
     meeting?.status !== "collecting_availability" &&
@@ -146,6 +156,8 @@ export function ParticipantAvailabilityPage() {
         <ParticipantAvailabilityCardShell>
           {isMeetingLoading ? (
             <p className="availability-message">Loading meeting details...</p>
+          ) : isInvalidOrInactiveLink ? (
+            <p className="availability-message">Invalid or inactive link.</p>
           ) : shouldRenderClosedState && meeting ? (
             <ParticipantAvailabilityClosedState meeting={meeting} />
           ) : (

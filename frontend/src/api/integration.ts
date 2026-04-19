@@ -35,32 +35,6 @@ export interface DashboardResponse {
   calendar_meetings: DashboardCalendarMeeting[];
 }
 
-export interface CreateMeetingPayload {
-  title: string;
-  description?: string;
-  organizer_name?: string;
-  is_draft?: boolean;
-  duration_minutes?: number;
-  location?: string;
-  participants_count?: number;
-  expiration?: string;
-  auto_venue?: boolean;
-  venue_recommendations_count?: number;
-  proposed_blocks?: Array<{
-    day: string;
-    time?: string;
-    start_time?: string;
-    end_time?: string;
-  }>;
-}
-
-export interface CreateMeetingResponse {
-  meeting_id: string;
-  poll_id: string;
-  status: string;
-  message: string;
-}
-
 export interface PollOption {
   option_id: string;
   label: string;
@@ -117,15 +91,6 @@ export function fetchDashboard(): Promise<DashboardResponse> {
   return apiFetch<DashboardResponse>("/api/dashboard");
 }
 
-export function createMeeting(
-  payload: CreateMeetingPayload,
-): Promise<CreateMeetingResponse> {
-  return apiFetch<CreateMeetingResponse>("/api/meetings", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function fetchPoll(pollId: string): Promise<PollResponse> {
   return apiFetch<PollResponse>(`/api/polls/${pollId}`);
 }
@@ -140,6 +105,8 @@ export function submitPollVote(
   });
 }
 
-export function fetchMeetingDetails(meetingId: string): Promise<MeetingDetailsResponse> {
+export function fetchMeetingDetails(
+  meetingId: string,
+): Promise<MeetingDetailsResponse> {
   return apiFetch<MeetingDetailsResponse>(`/meetings/${meetingId}/details`);
 }

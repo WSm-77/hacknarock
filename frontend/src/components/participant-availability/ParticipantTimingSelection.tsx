@@ -1,9 +1,9 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState, useEffect } from "react";
 import type { TimeBlockPayload } from "../../api/meetings";
 
 function generateTimeLabels() {
   const labels: string[] = [];
-  for (let hour = 8; hour <= 23; hour++) {
+  for (let hour = 0; hour <= 23; hour++) {
     for (let minute = 0; minute < 60; minute += 15) {
       const meridiem = hour >= 12 ? "PM" : "AM";
       const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
@@ -11,13 +11,11 @@ function generateTimeLabels() {
       labels.push(`${displayHour}:${displayMinute} ${meridiem}`);
     }
   }
-  labels.push("12:00 AM");
   return labels;
 }
 
 const timeLabels = generateTimeLabels();
-const GRID_START_HOUR = 8;
-const SLOT_MINUTES = 15;
+const GRID_START_HOUR = 0;
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 const dayLabels: Record<DayKey, string> = {
@@ -47,30 +45,27 @@ function getWeekDateRange(offset = 0): {
   display: string;
 } {
   const today = new Date();
-  const todayUtc = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-  );
-  const dayOfWeek = todayUtc.getUTCDay();
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay();
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const monday = new Date(todayUtc);
-  monday.setUTCDate(monday.getUTCDate() - daysFromMonday + offset * 7);
+  const monday = new Date(today);
+  monday.setDate(monday.getDate() - daysFromMonday + offset * 7);
 
   const sunday = new Date(monday);
-  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  sunday.setDate(sunday.getDate() + 6);
 
-  const format = (date: Date) =>
-    `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+  const format = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
   return {
     start: monday,
     end: sunday,
-    display: `${format(monday)} - ${format(sunday)}, ${monday.getUTCFullYear()}`,
+    display: `${format(monday)} - ${format(sunday)}, ${monday.getFullYear()}`,
   };
 }
 
 function getDateKey(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -83,14 +78,37 @@ function slotDateFromKey(dateKey: string, timeIndex: number): Date | null {
     return null;
   }
 
-  const minutesFromMidnight = GRID_START_HOUR * 60 + timeIndex * SLOT_MINUTES;
+  const minutesFromMidnight = GRID_START_HOUR * 60 + timeIndex * 15;
   const hours = Math.floor(minutesFromMidnight / 60);
   const minutes = minutesFromMidnight % 60;
-  return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
 }
 
 function slotKey(dateKey: string, timeIndex: number): string {
   return `${dateKey}|${timeIndex}`;
+}
+
+// Funkcja pomocnicza do obliczania przesunięcia tygodniowego dla zadanej daty
+function getWeekOffsetFromDate(targetDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const currentMonday = new Date(today);
+  currentMonday.setDate(currentMonday.getDate() - daysFromMonday);
+
+  const target = new Date(targetDate);
+  target.setHours(0, 0, 0, 0);
+  const targetDayOfWeek = target.getDay();
+  const targetDaysFromMonday = targetDayOfWeek === 0 ? 6 : targetDayOfWeek - 1;
+  const targetMonday = new Date(target);
+  targetMonday.setDate(targetMonday.getDate() - targetDaysFromMonday);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diffDays = Math.round(
+    (targetMonday.getTime() - currentMonday.getTime()) / msPerDay,
+  );
+  return Math.round(diffDays / 7);
 }
 
 export function ParticipantTimingSelection({
@@ -100,10 +118,27 @@ export function ParticipantTimingSelection({
   successMessage,
   isSubmitting,
 }: ParticipantTimingSelectionProps) {
+  // Inicjalizowanie kalendarza na tygodniu, w którym wypada pierwszy proposed_block
+  const initialOffset = useMemo(() => {
+    if (!proposedBlocks || proposedBlocks.length === 0) return 0;
+    const validDates = proposedBlocks
+      .map((b) => new Date(b.start_time))
+      .filter((d) => !Number.isNaN(d.getTime()));
+
+    if (validDates.length === 0) return 0;
+
+    // Szukamy najwcześniejszej daty
+    const earliestDate = new Date(
+      Math.min(...validDates.map((d) => d.getTime())),
+    );
+    return getWeekOffsetFromDate(earliestDate);
+  }, [proposedBlocks]);
+
   const [slotsByWeek, setSlotsByWeek] = useState<Map<number, Set<string>>>(
     new Map(),
   );
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState<number>(initialOffset);
+
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{
     dayIndex: number;
@@ -115,6 +150,11 @@ export function ParticipantTimingSelection({
   } | null>(null);
   const [dragDidMove, setDragDidMove] = useState(false);
   const [dragMode, setDragMode] = useState<"add" | "remove">("add");
+
+  // Jeśli initialOffset zmieni się po załadowaniu danych asynchronicznych, aktualizujemy widok
+  useEffect(() => {
+    setWeekOffset(initialOffset);
+  }, [initialOffset]);
 
   const selectedSlots = slotsByWeek.get(weekOffset) || new Set<string>();
   const totalSelectedSlots = Array.from(slotsByWeek.values()).reduce(
@@ -151,15 +191,15 @@ export function ParticipantTimingSelection({
     }> = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekRange.start);
-      date.setUTCDate(date.getUTCDate() + i);
-      const dayOfWeek = date.getUTCDay();
+      date.setDate(date.getDate() + i);
+      const dayOfWeek = date.getDay();
       const dayKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
         dayOfWeek
       ] as DayKey;
       days.push({
         key: dayKey,
         day: dayLabels[dayKey],
-        dateLabel: date.getUTCDate().toString().padStart(2, "0"),
+        dateLabel: date.getDate().toString().padStart(2, "0"),
         date,
       });
     }
@@ -173,9 +213,10 @@ export function ParticipantTimingSelection({
       return false;
     }
 
-    const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60 * 1000);
+    const slotEnd = new Date(slotStart.getTime() + 15 * 60 * 1000);
+    // Zmieniona logika na przecięcie (overlap), bo backend zwraca nieregularne sekundy (np. 01:05:25)
     return parsedProposedBlocks.some(
-      (block) => slotStart >= block.start && slotEnd <= block.end,
+      (block) => slotStart < block.end && slotEnd > block.start,
     );
   };
 
@@ -405,8 +446,8 @@ export function ParticipantTimingSelection({
           Select your availability
         </h2>
         <p className="font-body text-sm text-on-surface-variant mb-6">
-          Click on available time slots to mark your availability from 8 AM to
-          12 AM across the week.{" "}
+          Click on available time slots to mark your availability across the
+          week.{" "}
           {totalSelectedSlots > 0 && (
             <span className="text-primary font-medium">
               ({totalSelectedSlots} slots selected)
@@ -426,7 +467,7 @@ export function ParticipantTimingSelection({
                   chevron_left
                 </span>
               </button>
-              <h3 className="font-headline text-xl text-on-surface min-w-[200px]">
+              <h3 className="font-headline text-xl text-on-surface min-w-[200px] text-center">
                 {weekRange.display}
               </h3>
               <button
@@ -451,37 +492,8 @@ export function ParticipantTimingSelection({
                   const [year, month, day] = e.target.value
                     .split("-")
                     .map(Number);
-                  const selectedDate = new Date(
-                    Date.UTC(year, month - 1, day, 0, 0, 0, 0),
-                  );
-                  const today = new Date();
-                  const todayUtc = new Date(
-                    Date.UTC(
-                      today.getUTCFullYear(),
-                      today.getUTCMonth(),
-                      today.getUTCDate(),
-                    ),
-                  );
-                  const dayOfWeek = todayUtc.getUTCDay();
-                  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  const currentMonday = new Date(todayUtc);
-                  currentMonday.setUTCDate(
-                    currentMonday.getUTCDate() - daysFromMonday,
-                  );
-
-                  const selectedDayOfWeek = selectedDate.getUTCDay();
-                  const selectedDaysFromMonday =
-                    selectedDayOfWeek === 0 ? 6 : selectedDayOfWeek - 1;
-                  const selectedMonday = new Date(selectedDate);
-                  selectedMonday.setUTCDate(
-                    selectedMonday.getUTCDate() - selectedDaysFromMonday,
-                  );
-
-                  const weekDiff = Math.floor(
-                    (selectedMonday.getTime() - currentMonday.getTime()) /
-                      (7 * 24 * 60 * 60 * 1000),
-                  );
-                  setWeekOffset(weekDiff);
+                  const selectedDate = new Date(year, month - 1, day);
+                  setWeekOffset(getWeekOffsetFromDate(selectedDate));
                 }}
               />
               <button
@@ -555,11 +567,22 @@ export function ParticipantTimingSelection({
                         isAllowed,
                       );
 
+                      // ZMIANA: Ukrycie i wyłączenie kafelków, które nie wpadają w proposed_blocks.
+                      // Pusty, przezroczysty div pozwalający na utrzymanie struktury siatki kalendarza.
+                      if (!isAllowed) {
+                        return (
+                          <div
+                            key={key}
+                            className="h-8 w-full border-b border-[rgba(137,114,107,0.05)] bg-transparent pointer-events-none"
+                          />
+                        );
+                      }
+
+                      // ZMIANA: Renderowanie tylko dostępnych przycisków
                       return (
                         <button
                           key={key}
                           type="button"
-                          aria-disabled={!isAllowed}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             handleTileMouseDown(dayIndex, timeIndex);
@@ -571,11 +594,9 @@ export function ParticipantTimingSelection({
                             handleTileMouseUp(dayIndex, timeIndex)
                           }
                           className={`h-8 w-full transition-colors border-b border-[rgba(137,114,107,0.15)] ${
-                            !isAllowed
-                              ? "bg-surface-container-highest/10 text-outline/40 cursor-not-allowed"
-                              : isRenderedSelected
-                                ? "bg-primary hover:bg-primary/90 cursor-pointer"
-                                : "bg-surface-container-highest/30 hover:bg-secondary-container cursor-pointer"
+                            isRenderedSelected
+                              ? "bg-primary hover:bg-primary/90 cursor-pointer"
+                              : "bg-surface-container-highest hover:bg-secondary-container cursor-pointer shadow-sm border-x border-outline/10"
                           }`}
                         />
                       );

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from .models import CreateMeetingRequestDTO, CreateMeetingResponseDTO, DashboardResponseDTO, PollResponseDTO, VoteResponseDTO
+from .models import DashboardResponseDTO, PollResponseDTO, VoteResponseDTO
 from .repositories.database_repository import IntegrationDatabaseRepository
 
 
@@ -12,9 +12,6 @@ class IntegrationService:
     @staticmethod
     def _repository(db: Session) -> IntegrationDatabaseRepository:
         return IntegrationDatabaseRepository(db=db)
-
-    def create_meeting(self, db: Session, payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO:
-        return self._repository(db).create_meeting(payload)
 
     def get_dashboard(self, db: Session) -> DashboardResponseDTO:
         """
@@ -35,7 +32,7 @@ class IntegrationService:
     def get_poll(self, db: Session, poll_id: UUID) -> PollResponseDTO:
         return self._repository(db).get_poll(poll_id)
 
-    def submit_vote(self, db: Session, poll_id: UUID, option_id: str, voter_id: str | None) -> VoteResponseDTO:
+    def submit_vote(self, db: Session, poll_id: UUID, option_id: str, voter_id: str) -> VoteResponseDTO:
         return self._repository(db).submit_vote(poll_id=poll_id, option_id=option_id, voter_id=voter_id)
 
 
