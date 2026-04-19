@@ -87,6 +87,12 @@ export interface MeetingDetailsResponse {
   venue_recommendations_count?: number | null;
 }
 
+export interface ConfirmMeetingResponse {
+  meeting_id: string;
+  status: string;
+  message: string;
+}
+
 export function fetchDashboard(): Promise<DashboardResponse> {
   return apiFetch<DashboardResponse>("/api/dashboard");
 }
@@ -109,4 +115,10 @@ export function fetchMeetingDetails(
   meetingId: string,
 ): Promise<MeetingDetailsResponse> {
   return apiFetch<MeetingDetailsResponse>(`/meetings/${meetingId}/details`);
+}
+
+export function confirmMeetingFinalize(meetingId: string): Promise<ConfirmMeetingResponse> {
+  return apiFetch<ConfirmMeetingResponse>(`/api/meetings/${meetingId}/confirm`, {
+    method: 'POST',
+  });
 }

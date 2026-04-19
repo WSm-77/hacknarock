@@ -78,6 +78,12 @@ class CreateMeetingResponseDTO(BaseModel):
     message: str
 
 
+class ConfirmMeetingResponseDTO(BaseModel):
+    meeting_id: UUID
+    status: str
+    message: str
+
+
 class PollOptionDTO(BaseModel):
     option_id: str
     label: str

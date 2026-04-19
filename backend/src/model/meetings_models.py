@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from ..database.meeting_states import MeetingStatus
+from src.database.meeting_states import MeetingStatus
 
 
 class Coordinates(BaseModel):
@@ -52,6 +52,12 @@ class ParticipantAvailability(BaseModel):
     available_blocks: list[TimeBlock] = Field(default_factory=list, max_length=100)
     maybe_blocks: list[TimeBlock] = Field(default_factory=list, max_length=100)
     coordinates: Coordinates | None = None
+
+
+class MeetingStatus(str, Enum):
+    COLLECTING_AVAILABILITY = "collecting_availability"
+    WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
+    FINALIZED = "finalized"
 
 
 class MeetingCreateRequest(BaseModel):

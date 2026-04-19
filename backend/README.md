@@ -18,8 +18,16 @@ Compose also starts `frontend` and `postgres` together with backend.
 |---|---|---|
 | `/api/dashboard` | `GET` | `Dashboard` (`/`) |
 | `/api/meetings` | `POST` | `MeetingCreationWizard` (`/create`) |
+| `/api/meetings/{meeting_id}/confirm` | `POST` | `MeetingConfirmation` (`/confirm/:meetingId`) |
 | `/api/polls/{poll_id}` | `GET` | `ParticipationPage` (`/vote/:pollId`) |
 | `/api/polls/{poll_id}/votes` | `POST` | `ParticipationPage` (`/vote/:pollId`) |
+
+Finalize endpoint (`POST /api/meetings/{meeting_id}/confirm`) behavior:
+
+- Purpose: move a meeting from `waiting_for_confirmation` to `finalized`.
+- UI trigger: `Confirm and Finalize` button on the `MeetingConfirmation` page.
+- Idempotent behavior: confirming an already `finalized` meeting returns success and does not change state.
+- Errors: `404 Not Found` when meeting is missing, `409 Conflict` for invalid state transitions.
 
 Additional auth endpoints:
 
@@ -43,7 +51,7 @@ The dashboard response now includes two frontend mapping collections in addition
 
 ### Poll visibility rules
 
-- Included statuses: `collecting_votes`, `waiting_for_acceptance`, `confirmed`, `scheduled`.
+- Included statuses: `collecting_votes`, `waiting_for_confirmation`, `confirmed`, `scheduled`.
 - Excluded statuses: `draft`.
 - `open_polls` equals `len(polls)`.
 

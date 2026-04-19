@@ -9,6 +9,7 @@ import { ParticipantAvailabilityPage } from './pages/ParticipantAvailabilityPage
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import './App.css';
 import { MeetingDetails } from './pages/MeetingDetails';
+import { MeetingConfirmation } from './pages/MeetingConfirmation';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
           <Route path="/:meetingId" element={<MeetingDetails />} />
           <Route path="/meeting/:meetingId/details" element={<MeetingDetails />} />
           <Route path="/meeting/:meetingId" element={<MeetingDetails />} />
+          <Route path="/meeting-confirmation/:meetingId" element={<MeetingConfirmation />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Dashboard />} />
