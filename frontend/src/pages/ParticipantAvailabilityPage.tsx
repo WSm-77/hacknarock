@@ -1,138 +1,91 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { getAuthenticatedUserEmail, clearAccessToken } from '../auth/session';
-import { ApiError } from '../api/client';
-import { submitParticipantAvailability } from '../api/meetings';
-import '../styles/availability.css';
-
-type AvailabilityKind = 'available' | 'maybe';
-
-interface AvailabilityRow {
-  id: string;
-  startTime: string;
-  endTime: string;
-  kind: AvailabilityKind;
-}
-
-function generateRowId(): string {
-  const webCrypto = globalThis.crypto;
-
-  if (webCrypto?.randomUUID) {
-    return webCrypto.randomUUID();
-  }
-
-  if (webCrypto) {
-    const values = new Uint32Array(2);
-    webCrypto.getRandomValues(values);
-    return `row-${values[0].toString(16)}${values[1].toString(16)}`;
-  }
-
-  return `row-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-const EMPTY_ROW = (): AvailabilityRow => ({
-  id: generateRowId(),
-  startTime: '',
-  endTime: '',
-  kind: 'available',
-});
-
-function toDraftStorageKey(publicToken: string): string {
-  return `snapslot:availability-draft:${publicToken}`;
-}
-
-function toApiDate(value: string): string {
-  return new Date(value).toISOString();
-}
-
-function isCollectingAvailability(status: 'collecting_availability' | 'ready_for_ai' | 'ai_recommended'): boolean {
-  return status === 'collecting_availability';
-}
-
-function loadDraftRows(publicToken?: string): AvailabilityRow[] {
-  if (!publicToken) {
-    return [EMPTY_ROW()];
-  }
-
-  const raw = localStorage.getItem(toDraftStorageKey(publicToken));
-  if (!raw) {
-    return [EMPTY_ROW()];
-  }
-
-  try {
-    const draft = JSON.parse(raw) as AvailabilityRow[];
-    if (Array.isArray(draft) && draft.length > 0) {
-      return draft;
-    }
-  } catch {
-    localStorage.removeItem(toDraftStorageKey(publicToken));
-  }
-
-  return [EMPTY_ROW()];
-}
+import { type FormEvent, useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { clearAuthSession, logout } from "../api/auth";
+import { ApiError } from "../api/client";
+import {
+  fetchMeetingByPublicToken,
+  submitParticipantAvailability,
+  type MeetingJoinResponse,
+  type TimeBlockPayload,
+} from "../api/meetings";
+import { ParticipantAvailabilityCardShell } from "../components/participant-availability/ParticipantAvailabilityCardShell";
+import { ParticipantAvailabilityClosedState } from "../components/participant-availability/ParticipantAvailabilityClosedState";
+import { ParticipantAvailabilityFooter } from "../components/participant-availability/ParticipantAvailabilityFooter";
+import { ParticipantAvailabilityGlobalStyles } from "../components/participant-availability/ParticipantAvailabilityGlobalStyles";
+import { ParticipantAvailabilityNav } from "../components/participant-availability/ParticipantAvailabilityNav";
+import "../styles/availability.css";
+import { ParticipantTimingSelection } from "../components/participant-availability/ParticipantTimingSelection";
 
 export function ParticipantAvailabilityPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { publicToken } = useParams<{ publicToken: string }>();
-  const [rows, setRows] = useState<AvailabilityRow[]>(() => loadDraftRows(publicToken));
+  const [meeting, setMeeting] = useState<MeetingJoinResponse | null>(null);
+  const [isMeetingLoading, setIsMeetingLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isClosed, setIsClosed] = useState(false);
-  const userEmail = getAuthenticatedUserEmail();
+  const isCreatePage = location.pathname === "/create";
 
   useEffect(() => {
     if (!publicToken) {
       return;
     }
-    localStorage.setItem(toDraftStorageKey(publicToken), JSON.stringify(rows));
-  }, [publicToken, rows]);
 
-  const canSubmit = useMemo(() => {
-    if (isClosed || rows.length === 0) {
-      return false;
+    let isMounted = true;
+
+    void fetchMeetingByPublicToken(publicToken)
+      .then((meetingResponse) => {
+        if (isMounted) {
+          setMeeting(meetingResponse);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load meeting by public token:", error);
+        if (error instanceof ApiError && error.status === 401) {
+          clearAuthSession();
+          navigate("/login", {
+            replace: true,
+            state: { from: `/meetings/join/${publicToken}` },
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsMeetingLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, publicToken]);
+
+  const shouldRenderClosedState =
+    meeting?.status !== "collecting_availability" &&
+    meeting?.status !== undefined;
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await logout();
+    } catch {
+      // Ensure client session is always cleared even if API logout fails.
+    } finally {
+      clearAuthSession();
+      navigate("/");
     }
-    return rows.every((row) => row.startTime && row.endTime);
-  }, [isClosed, rows]);
-
-  function updateRow(rowId: string, patch: Partial<AvailabilityRow>): void {
-    setRows((currentRows) => currentRows.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
   }
 
-  function removeRow(rowId: string): void {
-    setRows((currentRows) => (currentRows.length <= 1 ? currentRows : currentRows.filter((row) => row.id !== rowId)));
-  }
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+    availableBlocks: TimeBlockPayload[],
+  ): Promise<void> {
+    event.preventDefault();
 
-  function addRow(): void {
-    setRows((currentRows) => [...currentRows, EMPTY_ROW()]);
-  }
-
-  async function handleSubmit(): Promise<void> {
     if (!publicToken) {
-      setErrorMessage('Missing meeting token in URL.');
+      setErrorMessage("Missing meeting token in URL.");
       return;
     }
-
-    const invalidRange = rows.some((row) => {
-      if (!row.startTime || !row.endTime) {
-        return true;
-      }
-      const start = new Date(row.startTime);
-      const end = new Date(row.endTime);
-      return Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end;
-    });
-    if (invalidRange) {
-      setErrorMessage('Provide valid start/end dates and ensure start is earlier than end.');
-      return;
-    }
-
-    const availableBlocks = rows
-      .filter((row) => row.kind === 'available')
-      .map((row) => ({ start_time: toApiDate(row.startTime), end_time: toApiDate(row.endTime) }));
-
-    const maybeBlocks = rows
-      .filter((row) => row.kind === 'maybe')
-      .map((row) => ({ start_time: toApiDate(row.startTime), end_time: toApiDate(row.endTime) }));
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -142,35 +95,35 @@ export function ParticipantAvailabilityPage() {
       const response = await submitParticipantAvailability(publicToken, {
         availability: {
           available_blocks: availableBlocks,
-          maybe_blocks: maybeBlocks,
+          maybe_blocks: [],
+          coordinates: null,
         },
       });
 
-      const isOpen = isCollectingAvailability(response.status);
-      if (!isOpen) {
-        setIsClosed(true);
-      }
-
-      setSuccessMessage(
-        isOpen
-          ? 'Availability saved. You can edit and save again until collection closes.'
-          : 'Availability was saved, but collection is now closed for this meeting.',
+      setMeeting((current) =>
+        current ? { ...current, status: response.status } : current,
       );
+      setSuccessMessage("Availability saved.");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          clearAccessToken();
-          navigate('/login', { replace: true, state: { from: `/meetings/join/${publicToken}` } });
+          clearAuthSession();
+          navigate("/login", {
+            replace: true,
+            state: { from: `/meetings/join/${publicToken}` },
+          });
           return;
         }
 
         if (error.status === 409) {
-          setIsClosed(true);
+          setMeeting((current) =>
+            current ? { ...current, status: "finalized" } : current,
+          );
         }
 
         setErrorMessage(error.detail);
       } else {
-        setErrorMessage('Could not save availability. Try again.');
+        setErrorMessage("Could not save availability. Try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -178,87 +131,36 @@ export function ParticipantAvailabilityPage() {
   }
 
   return (
-    <div className="availability-page">
-      <main className="availability-container">
-        <header className="availability-header">
-          <p className="availability-overline">Participant availability</p>
-          <h1>Define your availability for this meeting</h1>
-          <p>
-            Link token: <code>{publicToken}</code>
-            {userEmail ? ` · logged in as ${userEmail}` : ''}
-          </p>
-        </header>
+    <div className="antialiased min-h-screen flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed bg-surface text-on-surface">
+      <ParticipantAvailabilityGlobalStyles />
 
-        <section className="availability-card">
-          <div className="availability-card__head">
-            <h2>Time blocks</h2>
-            <button className="availability-secondary-btn" type="button" onClick={addRow} disabled={isClosed}>
-              Add block
-            </button>
-          </div>
+      <ParticipantAvailabilityNav
+        isCreatePage={isCreatePage}
+        onCreateNew={() => navigate("/create")}
+        onLogout={() => {
+          void handleLogout();
+        }}
+      />
 
-          <div className="availability-grid">
-            {rows.map((row, index) => (
-              <article key={row.id} className="availability-row">
-                <div className="availability-row__meta">Block {index + 1}</div>
-                <label>
-                  Start
-                  <input
-                    type="datetime-local"
-                    value={row.startTime}
-                    onChange={(event) => updateRow(row.id, { startTime: event.target.value })}
-                    disabled={isClosed}
-                  />
-                </label>
-                <label>
-                  End
-                  <input
-                    type="datetime-local"
-                    value={row.endTime}
-                    onChange={(event) => updateRow(row.id, { endTime: event.target.value })}
-                    disabled={isClosed}
-                  />
-                </label>
-                <label>
-                  Status
-                  <select
-                    value={row.kind}
-                    onChange={(event) => updateRow(row.id, { kind: event.target.value as AvailabilityKind })}
-                    disabled={isClosed}
-                  >
-                    <option value="available">Available</option>
-                    <option value="maybe">Maybe</option>
-                  </select>
-                </label>
-                <button className="availability-remove-btn" type="button" onClick={() => removeRow(row.id)} disabled={isClosed}>
-                  Remove
-                </button>
-              </article>
-            ))}
-          </div>
-
-          <div className="availability-card__actions">
-            <button
-              className="availability-primary-btn"
-              type="button"
-              onClick={() => {
-                void handleSubmit();
-              }}
-              disabled={!canSubmit || isSubmitting}
-            >
-              {isSubmitting ? 'Saving…' : 'Save availability'}
-            </button>
-          </div>
-
-          {successMessage && <p className="availability-message availability-message--success">{successMessage}</p>}
-          {errorMessage && <p className="availability-message availability-message--error">{errorMessage}</p>}
-          {isClosed && (
-            <p className="availability-message availability-message--warning">
-              Availability collection is closed for this meeting. Editing is disabled.
-            </p>
+      <main className="flex-grow max-w-6xl mx-auto w-full px-6 py-16 md:py-24">
+        <ParticipantAvailabilityCardShell>
+          {isMeetingLoading ? (
+            <p className="availability-message">Loading meeting details...</p>
+          ) : shouldRenderClosedState && meeting ? (
+            <ParticipantAvailabilityClosedState meeting={meeting} />
+          ) : (
+            <ParticipantTimingSelection
+              proposedBlocks={meeting?.proposed_blocks ?? []}
+              onSubmit={handleSubmit}
+              errorMessage={errorMessage}
+              successMessage={successMessage}
+              isSubmitting={isSubmitting}
+            />
           )}
-        </section>
+        </ParticipantAvailabilityCardShell>
       </main>
+
+      <ParticipantAvailabilityFooter />
     </div>
   );
 }
