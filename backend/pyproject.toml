@@ -22,6 +22,7 @@ dev = "main:app"
 # Console script to seed a test user: `uv run seed-test-user`
 clear-db = "src.scripts.clear_db:clear_db"
 create-db = "src.scripts.create_db:create_db"
+seed-finalized-meetings = "src.scripts.seed_finalized_meetings:seed_finalized_meetings"
 
 [dependency-groups]
 dev = [

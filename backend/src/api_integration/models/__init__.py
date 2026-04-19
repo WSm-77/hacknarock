@@ -1,7 +1,9 @@
 from ...model.api_integration_models import (
     CreateMeetingRequestDTO,
+    DashboardCalendarMeetingDTO,
     CreateMeetingResponseDTO,
     DashboardMeetingDTO,
+    DashboardPollDTO,
     DashboardResponseDTO,
     PollOptionDTO,
     PollResponseDTO,
@@ -11,8 +13,10 @@ from ...model.api_integration_models import (
 
 __all__ = [
     "CreateMeetingRequestDTO",
+    "DashboardCalendarMeetingDTO",
     "CreateMeetingResponseDTO",
     "DashboardMeetingDTO",
+    "DashboardPollDTO",
     "DashboardResponseDTO",
     "PollOptionDTO",
     "PollResponseDTO",

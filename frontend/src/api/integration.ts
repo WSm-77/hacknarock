@@ -9,11 +9,30 @@ export interface DashboardMeeting {
   created_at: string;
 }
 
+export interface DashboardPoll {
+  meeting_id: string;
+  poll_id: string | null;
+  title: string;
+  status: string;
+  participants: number;
+  created_at: string;
+}
+
+export interface DashboardCalendarMeeting {
+  meeting_id: string;
+  title: string;
+  status: string;
+  start_at: string;
+  end_at: string;
+}
+
 export interface DashboardResponse {
   active_meetings: number;
   upcoming_meetings: number;
   open_polls: number;
   recent_meetings: DashboardMeeting[];
+  polls: DashboardPoll[];
+  calendar_meetings: DashboardCalendarMeeting[];
 }
 
 export interface CreateMeetingPayload {
@@ -27,7 +46,7 @@ export interface CreateMeetingPayload {
   expiration?: string;
   auto_venue?: boolean;
   venue_recommendations_count?: number;
-  proposed_blocks?: Array<{ day: string; time: string }>;
+  proposed_blocks?: Array<Record<string, string>>;
 }
 
 export interface CreateMeetingResponse {

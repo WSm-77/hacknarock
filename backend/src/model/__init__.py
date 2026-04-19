@@ -1,7 +1,9 @@
 from .api_integration_models import (
     CreateMeetingRequestDTO,
+    DashboardCalendarMeetingDTO,
     CreateMeetingResponseDTO,
     DashboardMeetingDTO,
+    DashboardPollDTO,
     DashboardResponseDTO,
     PollOptionDTO,
     PollResponseDTO,
@@ -27,8 +29,10 @@ from .meetings_models import (
 __all__ = [
     "Coordinates",
     "CreateMeetingRequestDTO",
+    "DashboardCalendarMeetingDTO",
     "CreateMeetingResponseDTO",
     "DashboardMeetingDTO",
+    "DashboardPollDTO",
     "DashboardResponseDTO",
     "LoginResponse",
     "MeetingCreateRequest",

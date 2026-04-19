@@ -68,18 +68,8 @@ export function ParticipationPage() {
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
     {
-      label: 'Meetings',
-      href: '/',
-      className: 'text-[#9a4021] font-semibold border-b-2 border-[#9a4021] pb-1 transition-all duration-300',
-    },
-    {
-      label: 'Availability',
-      href: '/create',
-      className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
-    },
-    {
-      label: 'Archives',
-      href: '/login',
+      label: 'Polls',
+      href: '/polls',
       className: 'text-stone-600 font-sans hover:text-[#141413] transition-all duration-300',
     },
   ];

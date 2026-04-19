@@ -50,6 +50,7 @@ class ParticipantAvailability(BaseModel):
 
 class MeetingStatus(str, Enum):
     COLLECTING_AVAILABILITY = "collecting_availability"
+    FINALIZED = "finalized"
     READY_FOR_AI = "ready_for_ai"
     AI_RECOMMENDED = "ai_recommended"
 

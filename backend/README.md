@@ -27,6 +27,26 @@ Additional auth endpoints:
 - `POST /auth/login`
 - `POST /auth/logout`
 
+## Dashboard Contract (`GET /api/dashboard`)
+
+The dashboard response now includes two frontend mapping collections in addition to counters and `recent_meetings`:
+
+- `polls`: live poll cards for dashboard voting sections.
+- `calendar_meetings`: calendar entries rendered on timeline/calendar views.
+
+### Poll visibility rules
+
+- Included statuses: `collecting_votes`, `waiting_for_acceptance`, `confirmed`, `scheduled`.
+- Excluded statuses: `draft`.
+- `open_polls` equals `len(polls)`.
+
+### Calendar semantics (current stage)
+
+- `calendar_meetings` are derived deterministically from stored meetings (not external calendar sync).
+- `start_at` is the meeting `created_at`.
+- `end_at` is computed as `created_at + duration_minutes` (default `60` when missing).
+- `draft` meetings are excluded.
+
 ## Auth Contract (Current)
 
 - `POST /auth/register`

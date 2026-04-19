@@ -1,23 +1,121 @@
-const dayHeaders = [
-  { day: 'Mon', date: '14' },
-  { day: 'Tue', date: '15', highlighted: true },
-  { day: 'Wed', date: '16' },
-  { day: 'Thu', date: '17' },
-  { day: 'Fri', date: '18' },
-  { day: 'Sat', date: '19', muted: true },
-  { day: 'Sun', date: '20', muted: true },
-];
+import type { DashboardCalendarMeeting } from '../../api/integration';
+import { useNavigate } from 'react-router-dom';
 
-const timeRows = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
+interface CalendarBoardProps {
+  calendarMeetings?: DashboardCalendarMeeting[];
+  weekStart: Date;
+}
 
-export function CalendarBoard() {
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDayHeader(date: Date): { day: string; date: string; highlighted: boolean; muted: boolean } {
+  const today = startOfDay(new Date());
+  const current = startOfDay(date);
+  const isToday = current.getTime() === today.getTime();
+  const dayOfWeek = current.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  return {
+    day: current.toLocaleDateString(undefined, { weekday: 'short' }),
+    date: current.toLocaleDateString(undefined, { day: 'numeric' }),
+    highlighted: isToday,
+    muted: isWeekend,
+  };
+}
+
+function formatTimeLabel(date: Date): string {
+  return date.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function toStatusLabel(status: string): string {
+  return status.replaceAll('_', ' ');
+}
+
+function statusClassNames(status: string): { card: string; accent: string; status: string } {
+  if (status === 'collecting_votes') {
+    return {
+      card: 'bg-primary/5 border-primary/20 hover:bg-primary/10',
+      accent: 'bg-primary',
+      status: 'text-primary',
+    };
+  }
+
+  if (status === 'finalized') {
+    return {
+      card: 'bg-emerald-50 border-emerald-200/80 hover:bg-emerald-100/80',
+      accent: 'bg-emerald-500',
+      status: 'text-emerald-700',
+    };
+  }
+
+  return {
+    card: 'bg-surface-container-low border-outline-variant/60 hover:bg-surface-container',
+    accent: 'bg-outline',
+    status: 'text-on-surface-variant',
+  };
+}
+
+export function CalendarBoard({ calendarMeetings = [], weekStart }: CalendarBoardProps) {
+  const navigate = useNavigate();
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(startOfDay(weekStart), index));
+  const dayHeaders = weekDays.map(formatDayHeader);
+  const visibleWeekStart = weekDays[0];
+  const visibleWeekEnd = addDays(visibleWeekStart, 7);
+
+  const groupedEvents = calendarMeetings
+    .map((meeting) => {
+      const start = new Date(meeting.start_at);
+      const end = new Date(meeting.end_at);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+        return null;
+      }
+
+      if (end <= visibleWeekStart || start >= visibleWeekEnd) {
+        return null;
+      }
+
+      const eventDayStart = startOfDay(start);
+      const dayIndex = Math.floor((eventDayStart.getTime() - visibleWeekStart.getTime()) / (24 * 60 * 60 * 1000));
+
+      if (dayIndex < 0 || dayIndex > 6) {
+        return null;
+      }
+
+      const style = statusClassNames(meeting.status);
+
+      return {
+        meeting,
+        dayIndex,
+        start,
+        end,
+        className: style.card,
+        accentClassName: style.accent,
+        statusClassName: style.status,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((left, right) => left.start.getTime() - right.start.getTime());
+
+  const eventsByDay = weekDays.map((_, dayIndex) => groupedEvents.filter((event) => event.dayIndex === dayIndex));
+
   return (
     <div className="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0px_12px_32px_-4px_rgba(86,66,60,0.08)] ring-1 ring-on-surface/5">
       <div className="calendar-grid bg-surface-container-low/50 border-b border-surface-variant/30">
-        <div className="p-4" />
-        {dayHeaders.map((item) => (
+        <div className="p-4 text-[11px] uppercase tracking-widest text-on-surface-variant/60">Week</div>
+        {dayHeaders.map((item, index) => (
           <div
-            key={`${item.day}-${item.date}`}
+            key={`${item.day}-${item.date}-${index}`}
             className={`p-4 text-center border-l border-surface-variant/20 ${item.highlighted ? 'bg-primary/5' : ''} ${item.muted ? 'italic opacity-50' : ''}`}
           >
             <span className={`block text-xs font-label uppercase tracking-widest mb-1 ${item.highlighted ? 'text-primary' : 'text-on-surface-variant/60'}`}>
@@ -30,41 +128,51 @@ export function CalendarBoard() {
         ))}
       </div>
 
-      <div className="relative h-[600px] overflow-y-auto">
-        <div className="absolute inset-0 calendar-grid pointer-events-none"><div className="border-r border-surface-variant/10" /><div className="border-r border-surface-variant/10" /><div className="border-r border-surface-variant/10 bg-primary/[0.02]" /><div className="border-r border-surface-variant/10" /><div className="border-r border-surface-variant/10" /><div className="border-r border-surface-variant/10" /><div className="border-r border-surface-variant/10" /><div /></div>
-        <div className="relative z-10">
-          {timeRows.map((time) => (
-            <div key={time} className="calendar-grid border-b border-surface-variant/10 group">
-              <div className="p-4 text-right text-[10px] font-label text-on-surface-variant/50 uppercase">{time}</div>
-              <div className="col-span-7 h-16 relative">
-                {time === '10:00 AM' && (
-                  <div className="absolute left-[0.5%] w-[13.5%] top-2 bottom-[-40px] bg-[#fdf2f0] border-l-2 border-primary p-3 rounded-r-lg shadow-sm">
-                    <h4 className="text-xs font-bold text-primary truncate">Curatorial Sync</h4>
-                    <p className="text-[10px] text-primary-container leading-tight mt-1">10:00 - 11:30 AM</p>
+      <div className="h-[600px] overflow-y-auto overflow-x-auto">
+        <div className="calendar-grid min-w-[920px]">
+          <div className="sticky left-0 z-10 bg-surface-container-lowest p-4 text-[11px] text-on-surface-variant/70 border-r border-surface-variant/20">
+            <p className="font-label uppercase tracking-widest">Card View</p>
+            <p className="mt-2 leading-relaxed">Compact daily cards. Tap a card to open details.</p>
+          </div>
+          {eventsByDay.map((events, dayIndex) => {
+            const date = weekDays[dayIndex];
+            const isToday = startOfDay(date).getTime() === startOfDay(new Date()).getTime();
+
+            return (
+              <div
+                key={`${date.toISOString()}-${dayIndex}`}
+                className={`p-3 space-y-2 border-l border-surface-variant/15 ${isToday ? 'bg-primary/[0.015]' : ''}`}
+              >
+                {events.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-surface-variant/40 bg-surface-container-low/40 p-3 text-xs text-on-surface-variant/60">
+                    No meetings
                   </div>
-                )}
-                {time === '11:00 AM' && (
-                  <div className="absolute left-[15%] w-[13.5%] top-2 bottom-[-20px] bg-primary text-on-primary p-3 rounded-lg shadow-md z-20">
-                    <h4 className="text-xs font-bold truncate">Study Session</h4>
-                    <p className="text-[10px] text-primary-fixed leading-tight mt-1">11:00 - 12:15 PM</p>
-                    <div className="mt-2 flex items-center gap-1"><span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span><span className="text-[9px] uppercase tracking-tighter">Main Archive</span></div>
-                  </div>
-                )}
-                {time === '1:00 PM' && (
-                  <div className="absolute left-[29.5%] w-[13.5%] top-4 bottom-[-10px] bg-tertiary-fixed border-l-2 border-tertiary p-3 rounded-r-lg">
-                    <h4 className="text-xs font-bold text-on-tertiary-fixed truncate">Manifesto Draft</h4>
-                    <p className="text-[10px] text-on-tertiary-fixed-variant leading-tight mt-1">1:15 - 2:00 PM</p>
-                  </div>
-                )}
-                {time === '2:00 PM' && (
-                  <div className="absolute left-[58.5%] w-[13.5%] top-0 bottom-[-30px] bg-[#fdf2f0] border-l-2 border-primary p-3 rounded-r-lg shadow-sm">
-                    <h4 className="text-xs font-bold text-primary truncate">Weekly Retro</h4>
-                    <p className="text-[10px] text-primary-container leading-tight mt-1">2:00 - 3:30 PM</p>
-                  </div>
+                ) : (
+                  events.map((event) => (
+                    <button
+                      key={`${event.meeting.meeting_id}-${event.meeting.start_at}`}
+                      type="button"
+                      className={`w-full text-left rounded-xl border p-3 shadow-[0px_4px_12px_-8px_rgba(25,28,27,0.35)] transition-colors ${event.className}`}
+                      onClick={() => navigate(`/meeting/${event.meeting.meeting_id}`)}
+                    >
+                      <div className="flex gap-2 items-start">
+                        <span className={`mt-0.5 h-8 w-1 shrink-0 rounded-full ${event.accentClassName}`} />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold tracking-wide text-on-surface-variant">
+                            {formatTimeLabel(event.start)} - {formatTimeLabel(event.end)}
+                          </p>
+                          <h4 className="mt-1 text-sm font-semibold text-on-surface leading-tight line-clamp-2">{event.meeting.title}</h4>
+                          <p className={`mt-1 text-[10px] uppercase tracking-widest font-medium ${event.statusClassName}`}>
+                            {toStatusLabel(event.meeting.status)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
