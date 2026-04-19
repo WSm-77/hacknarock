@@ -1,11 +1,10 @@
 from datetime import datetime
-from enum import Enum
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-from database.meeting_states import MeetingStatus
+from ..database.meeting_states import MeetingStatus
 
 
 class Coordinates(BaseModel):
@@ -36,10 +35,7 @@ class TimeBlock(BaseModel):
         return self
 
 
-class ProposedBlock(TimeBlock):
-    """Przedział czasowy zaproponowany przez organizatora."""
-
-    id: UUID = Field(default_factory=uuid4)
+ProposedBlock = TimeBlock
 
 
 class ParticipantAvailability(BaseModel):

@@ -4,7 +4,6 @@ from uuid import uuid4
 from src.model.meetings_models import TimeBlock
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-
 from ..session import Base
 from ..meeting_states import MeetingStatus
 

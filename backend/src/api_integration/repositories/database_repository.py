@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from collections import defaultdict
 import secrets
 from uuid import UUID
@@ -64,6 +64,14 @@ class IntegrationDatabaseRepository:
 
     @staticmethod
     def _resolve_deadline(payload: CreateMeetingRequestDTO) -> datetime:
+        """Resolve integration meeting deadline from payload with fallback policy.
+
+        Args:
+            payload: Integration create request DTO.
+
+        Returns:
+            datetime: UTC deadline at end of selected expiration day or default future date.
+        """
         if payload.expiration is not None:
             # Expiration from create page is a date; keep it valid through end of selected day.
             return datetime.combine(payload.expiration, time(23, 59, 59), tzinfo=UTC)
@@ -72,6 +80,14 @@ class IntegrationDatabaseRepository:
 
     @staticmethod
     def _parse_time_label_to_minutes(label: str) -> int | None:
+        """Parse a 12-hour time label into minutes since midnight.
+
+        Args:
+            label: Time label such as "11:15 AM" or "11:15AM".
+
+        Returns:
+            int | None: Minutes since midnight when parsing succeeds; otherwise None.
+        """
         candidate = label.strip()
         # Accept both "11:15 AM" and "11:15AM"
         for fmt in ("%I:%M %p", "%I:%M%p"):
@@ -88,12 +104,108 @@ class IntegrationDatabaseRepository:
         dt = datetime(2000, 1, 1) + timedelta(minutes=wrapped)
         return dt.strftime("%I:%M %p").lstrip("0")
 
+    @staticmethod
+    def _parse_iso_datetime(raw: object) -> datetime | None:
+        """Parse an ISO datetime value and normalize it to UTC.
+
+        Args:
+            raw: Raw candidate value expected to contain an ISO datetime string.
+
+        Returns:
+            datetime | None: UTC datetime for valid ISO input; otherwise None.
+        """
+        if not isinstance(raw, str):
+            return None
+        candidate = raw.strip()
+        if not candidate:
+            return None
+
+        try:
+            parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC)
+
+    @staticmethod
+    def _resolve_anchor_monday(deadline: datetime) -> date:
+        """Resolve Monday date anchor for mapping day-based blocks.
+
+        Args:
+            deadline: Meeting deadline used to determine target calendar week.
+
+        Returns:
+            date: Monday date for the deadline week in UTC.
+        """
+        deadline_utc = deadline if deadline.tzinfo else deadline.replace(tzinfo=UTC)
+        deadline_utc = deadline_utc.astimezone(UTC)
+        anchor = deadline_utc.date()
+        return anchor - timedelta(days=anchor.weekday())
+
     @classmethod
-    def _compact_proposed_blocks(cls, raw_blocks: list[dict[str, str]]) -> list[dict[str, str]]:
+    def _merge_ranges(cls, ranges: list[tuple[datetime, datetime]]) -> list[dict[str, str]]:
+        """Merge overlapping or adjacent datetime ranges into canonical blocks.
+
+        Args:
+            ranges: Raw datetime intervals to merge.
+
+        Returns:
+            list[dict[str, str]]: Canonical blocks with start_time and end_time ISO strings.
+        """
+        if not ranges:
+            return []
+
+        ordered = sorted(ranges, key=lambda item: item[0])
+        merged: list[list[datetime]] = [[ordered[0][0], ordered[0][1]]]
+        for start, end in ordered[1:]:
+            current = merged[-1]
+            if start <= current[1]:
+                if end > current[1]:
+                    current[1] = end
+                continue
+            merged.append([start, end])
+
+        return [
+            {
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            }
+            for start, end in merged
+        ]
+
+    @classmethod
+    def _compact_proposed_blocks(
+        cls,
+        raw_blocks: list[dict[str, str]],
+        *,
+        anchor_monday: date,
+    ) -> list[dict[str, str]]:
+        """Normalize mixed integration proposed blocks into canonical UTC ranges.
+
+        Supports canonical ISO ranges, point-slot day/time format, and legacy
+        day/start_time/end_time labels before producing merged canonical ranges.
+
+        Args:
+            raw_blocks: Organizer-provided proposed blocks from integration payload.
+            anchor_monday: Week anchor used when converting day-based legacy blocks.
+
+        Returns:
+            list[dict[str, str]]: Canonical blocks with start_time and end_time ISO strings.
+        """
         day_order = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6}
         slots_by_day: dict[str, set[int]] = defaultdict(set)
+        ranges: list[tuple[datetime, datetime]] = []
 
         for block in raw_blocks:
+            # Prefer already-canonical datetime ranges when provided.
+            start_dt = cls._parse_iso_datetime(block.get("start_time"))
+            end_dt = cls._parse_iso_datetime(block.get("end_time"))
+            if start_dt and end_dt and end_dt > start_dt:
+                ranges.append((start_dt, end_dt))
+                continue
+
             day = str(block.get("day", "")).strip().upper()
             if not day:
                 continue
@@ -117,17 +229,25 @@ class IntegrationDatabaseRepository:
             if start_minutes is None or end_minutes is None or end_minutes <= start_minutes:
                 continue
 
-            # Expand to 15-minute slots for canonical merge logic.
-            minute = start_minutes
-            while minute < end_minutes:
-                slots_by_day[day].add(minute)
-                minute += 15
+            day_index = day_order.get(day)
+            if day_index is None:
+                continue
 
-        compacted: list[dict[str, str]] = []
+            day_date = anchor_monday + timedelta(days=day_index)
+            range_start = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=start_minutes)
+            range_end = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=end_minutes)
+            ranges.append((range_start, range_end))
+
+        compacted: list[tuple[datetime, datetime]] = []
         for day in sorted(slots_by_day.keys(), key=lambda d: day_order.get(d, 999)):
             ordered = sorted(slots_by_day[day])
             if not ordered:
                 continue
+
+            day_index = day_order.get(day)
+            if day_index is None:
+                continue
+            day_date = anchor_monday + timedelta(days=day_index)
 
             start = ordered[0]
             prev = ordered[0]
@@ -136,27 +256,31 @@ class IntegrationDatabaseRepository:
                     prev = minute
                     continue
 
-                compacted.append(
-                    {
-                        "day": day,
-                        "start_time": cls._format_minutes_to_label(start),
-                        "end_time": cls._format_minutes_to_label(prev + 15),
-                    }
-                )
+                slot_start = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=start)
+                slot_end = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=prev + 15)
+                compacted.append((slot_start, slot_end))
                 start = minute
                 prev = minute
 
-            compacted.append(
-                {
-                    "day": day,
-                    "start_time": cls._format_minutes_to_label(start),
-                    "end_time": cls._format_minutes_to_label(prev + 15),
-                }
-            )
+            slot_start = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=start)
+            slot_end = datetime.combine(day_date, time.min, tzinfo=UTC) + timedelta(minutes=prev + 15)
+            compacted.append((slot_start, slot_end))
 
-        return compacted
+        ranges.extend(compacted)
+        return cls._merge_ranges(ranges)
 
     def create_meeting(self, payload: CreateMeetingRequestDTO) -> CreateMeetingResponseDTO:
+        """Create an integration meeting with canonicalized proposed blocks.
+
+        Args:
+            payload: Integration create request DTO.
+
+        Returns:
+            CreateMeetingResponseDTO: Persisted identifiers and creation status payload.
+
+        Raises:
+            ValueError: Raised when resolved expiration is not in the future.
+        """
         deadline = self._resolve_deadline(payload)
         now = datetime.now(UTC)
         if deadline <= now:
@@ -165,7 +289,11 @@ class IntegrationDatabaseRepository:
         venue_recommendations_count = (
             payload.venue_recommendations_count if payload.auto_venue else None
         )
-        compacted_blocks = self._compact_proposed_blocks(payload.proposed_blocks)
+        anchor_monday = self._resolve_anchor_monday(deadline)
+        compacted_blocks = self._compact_proposed_blocks(
+            payload.proposed_blocks,
+            anchor_monday=anchor_monday,
+        )
 
         meeting = MeetingORM(
             meeting_title=payload.title,

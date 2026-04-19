@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from uuid import UUID
 import secrets
 
@@ -18,12 +18,30 @@ from .domain import (
 
 
 class MeetingService:
+    _DAY_ORDER = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6}
+
     @staticmethod
     def _utc_now() -> datetime:
+        """Return the current UTC datetime.
+
+        Returns:
+            datetime: Current timestamp with UTC timezone information.
+        """
         return datetime.now(timezone.utc)
 
     @staticmethod
     def _normalize_utc(dt: datetime) -> datetime:
+        """Normalize a datetime to timezone-aware UTC.
+
+        Naive datetimes are treated as UTC to preserve backward compatibility
+        with legacy payloads and persisted values.
+
+        Args:
+            dt: Datetime value to normalize.
+
+        Returns:
+            datetime: UTC-normalized timezone-aware datetime.
+        """
         if dt.tzinfo is None:
             return dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
@@ -31,6 +49,153 @@ class MeetingService:
     @staticmethod
     def _to_timeblocks(raw_blocks: list[dict]) -> list[TimeBlock]:
         return [TimeBlock(**block) for block in raw_blocks]
+
+    @staticmethod
+    def _parse_time_label_to_minutes(label: str) -> int | None:
+        """Parse a 12-hour time label into minutes since midnight.
+
+        Args:
+            label: Time label such as "11:15 AM" or "11:15AM".
+
+        Returns:
+            int | None: Minutes since midnight when parsing succeeds; otherwise None.
+        """
+        candidate = label.strip()
+        for fmt in ("%I:%M %p", "%I:%M%p"):
+            try:
+                parsed = datetime.strptime(candidate, fmt)
+                return parsed.hour * 60 + parsed.minute
+            except ValueError:
+                continue
+        return None
+
+    @staticmethod
+    def _parse_iso_datetime(raw: object) -> datetime | None:
+        """Parse an ISO datetime string and normalize it to UTC.
+
+        Args:
+            raw: Raw candidate value expected to contain an ISO datetime string.
+
+        Returns:
+            datetime | None: UTC datetime for valid ISO input; otherwise None.
+        """
+        if not isinstance(raw, str):
+            return None
+        candidate = raw.strip()
+        if not candidate:
+            return None
+        try:
+            parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return MeetingService._normalize_utc(parsed)
+
+    @classmethod
+    def _resolve_anchor_monday(cls, availability_deadline: datetime) -> date:
+        """Resolve the week anchor date used for day-based block normalization.
+
+        Args:
+            availability_deadline: Meeting availability deadline datetime.
+
+        Returns:
+            date: Monday date for the deadline week in UTC.
+        """
+        deadline = cls._normalize_utc(availability_deadline)
+        anchor = deadline.date()
+        return anchor - timedelta(days=anchor.weekday())
+
+    @classmethod
+    def _normalize_raw_proposed_blocks(cls, meeting: MeetingORM) -> list[dict]:
+        """Normalize mixed proposed-block input into canonical UTC datetime ranges.
+
+        Supports canonical ranges and legacy day/time formats, merges overlapping
+        or adjacent ranges, and returns a consistent serializer-friendly shape.
+
+        Args:
+            meeting: Meeting ORM entity containing raw proposed_blocks and deadline.
+
+        Returns:
+            list[dict]: Canonical block dictionaries with start_time and end_time ISO strings.
+        """
+        raw_blocks = meeting.proposed_blocks or []
+        anchor_monday = cls._resolve_anchor_monday(meeting.availability_deadline)
+        ranges: list[tuple[datetime, datetime]] = []
+
+        for block in raw_blocks:
+            if not isinstance(block, dict):
+                continue
+
+            start_dt = cls._parse_iso_datetime(block.get("start_time"))
+            end_dt = cls._parse_iso_datetime(block.get("end_time"))
+            if start_dt and end_dt and end_dt > start_dt:
+                ranges.append((start_dt, end_dt))
+                continue
+
+            day = str(block.get("day", "")).strip().upper()
+            day_index = cls._DAY_ORDER.get(day)
+            if day_index is None:
+                continue
+
+            day_date = anchor_monday + timedelta(days=day_index)
+            base = datetime.combine(day_date, time.min, tzinfo=UTC)
+
+            label = str(block.get("time", "")).strip()
+            if label:
+                minutes = cls._parse_time_label_to_minutes(label)
+                if minutes is not None:
+                    start = base + timedelta(minutes=minutes)
+                    ranges.append((start, start + timedelta(minutes=15)))
+                continue
+
+            start_label = str(block.get("start_time", "")).strip()
+            end_label = str(block.get("end_time", "")).strip()
+            if not start_label or not end_label:
+                continue
+
+            start_minutes = cls._parse_time_label_to_minutes(start_label)
+            end_minutes = cls._parse_time_label_to_minutes(end_label)
+            if start_minutes is None or end_minutes is None or end_minutes <= start_minutes:
+                continue
+
+            ranges.append(
+                (
+                    base + timedelta(minutes=start_minutes),
+                    base + timedelta(minutes=end_minutes),
+                )
+            )
+
+        if not ranges:
+            return []
+
+        ordered = sorted(ranges, key=lambda item: item[0])
+        merged: list[list[datetime]] = [[ordered[0][0], ordered[0][1]]]
+        for start, end in ordered[1:]:
+            current = merged[-1]
+            if start <= current[1]:
+                if end > current[1]:
+                    current[1] = end
+                continue
+            merged.append([start, end])
+
+        return [
+            {
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            }
+            for start, end in merged
+        ]
+
+    @classmethod
+    def _meeting_proposed_timeblocks(cls, meeting: MeetingORM) -> list[TimeBlock]:
+        """Build canonical meeting proposed blocks as TimeBlock models.
+
+        Args:
+            meeting: Meeting ORM entity with persisted proposed_blocks.
+
+        Returns:
+            list[TimeBlock]: Canonical meeting slots in UTC datetime range form.
+        """
+        return cls._to_timeblocks(cls._normalize_raw_proposed_blocks(meeting))
 
     @staticmethod
     def _serialize_timeblocks(blocks: list[TimeBlock]) -> list[dict]:
@@ -53,18 +218,14 @@ class MeetingService:
         submitted_block: TimeBlock,
         proposed_blocks: list[TimeBlock],
     ) -> bool:
-        """
-        Check whether a submitted block fits entirely inside one proposed block.
+        """Check whether a submitted block is fully contained in proposed blocks.
 
         Args:
-            submitted_block: The participant-submitted time block to validate.
-            proposed_blocks: The organizer-proposed blocks allowed for selection.
+            submitted_block: Participant-provided availability block.
+            proposed_blocks: Organizer-proposed canonical availability ranges.
 
         Returns:
-            bool: True when the submitted block is fully contained in at least one proposed block.
-
-        Raises:
-            None.
+            bool: True when submitted_block is fully inside at least one proposed block.
         """
         submitted_start = cls._normalize_utc(submitted_block.start_time)
         submitted_end = cls._normalize_utc(submitted_block.end_time)
@@ -80,18 +241,17 @@ class MeetingService:
         availability: ParticipantAvailability,
         proposed_blocks: list[TimeBlock],
     ) -> None:
-        """
-        Reject participant availability blocks that fall outside proposed meeting blocks.
+        """Validate participant availability as a subset of proposed organizer slots.
 
         Args:
-            availability: The participant availability payload to validate.
-            proposed_blocks: The organizer-proposed blocks allowed for selection.
+            availability: Participant availability payload with available and maybe blocks.
+            proposed_blocks: Organizer-proposed canonical availability ranges.
 
         Returns:
-            None: The method only validates and raises on invalid input.
+            None: The method returns normally when all submitted blocks are valid.
 
         Raises:
-            HTTPException: Raised with HTTP 400 when any available or maybe block is out of range.
+            HTTPException: Raised with 400 status when any submitted block falls outside proposed blocks.
         """
         submitted_blocks = [*availability.available_blocks, *availability.maybe_blocks]
         for block in submitted_blocks:
@@ -133,7 +293,7 @@ class MeetingService:
             description=meeting.description,
             status=MeetingStatus(meeting.status),
             availability_deadline=meeting.availability_deadline,
-            proposed_blocks=cls._to_timeblocks(meeting.proposed_blocks),
+            proposed_blocks=cls._meeting_proposed_timeblocks(meeting),
             public_link=f"/meetings/join/{meeting.public_token}",
             ai_recommendation=meeting.ai_recommendation,
         )
@@ -335,7 +495,7 @@ class MeetingService:
 
         cls._validate_participant_blocks_within_proposed(
             availability=availability,
-            proposed_blocks=cls._to_timeblocks(meeting.proposed_blocks),
+            proposed_blocks=cls._meeting_proposed_timeblocks(meeting),
         )
 
         vote = (
@@ -408,7 +568,7 @@ class MeetingService:
         if not votes:
             return "No participant votes were found. Propose a new time and restart availability collection."
 
-        proposed_blocks = cls._to_timeblocks(meeting.proposed_blocks)
+        proposed_blocks = cls._meeting_proposed_timeblocks(meeting)
         if not proposed_blocks:
             return "No proposed time windows were found."
 
