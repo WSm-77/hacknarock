@@ -37,6 +37,13 @@ Authentication endpoints are used by the logging page (`/login` and `/logging`):
 - Registration duplicate email returns `400` and is surfaced as an email field error.
 - Invalid auth payloads (missing/invalid fields) are rejected by backend validation.
 
+## Participant Availability Normalization (Current)
+
+- `GET /meetings/join/{public_token}` returns canonical `proposed_blocks` as objects shaped `{ "start_time": "<ISO datetime>", "end_time": "<ISO datetime>" }`.
+- Integration meeting creation normalizes organizer `proposed_blocks` (legacy and canonical formats) to canonical UTC datetime ranges before persistence.
+- Integration create payload enforces a maximum of 100 `proposed_blocks`.
+- Participant availability must be a subset of organizer-proposed slots; out-of-range blocks are rejected by backend validation.
+
 ## Environment Variables
 
 No extra variables are required for default local development because Compose provides safe defaults.

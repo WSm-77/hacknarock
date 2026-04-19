@@ -27,6 +27,13 @@ Additional auth endpoints:
 - `POST /auth/login`
 - `POST /auth/logout`
 
+Participant availability and integration endpoints:
+
+- `GET /meetings/join/{public_token}` returns canonical `proposed_blocks` as `{ "start_time": "<ISO datetime>", "end_time": "<ISO datetime>" }` objects.
+- Integration create flow normalizes organizer `proposed_blocks` (legacy and canonical formats) into canonical UTC datetime ranges before writing to the database.
+- Integration create payload accepts at most 100 `proposed_blocks`.
+- Participant availability submission accepts only a subset of organizer-proposed slots; any out-of-range block is rejected by backend subset validation.
+
 ## Dashboard Contract (`GET /api/dashboard`)
 
 The dashboard response now includes two frontend mapping collections in addition to counters and `recent_meetings`:
