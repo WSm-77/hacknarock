@@ -31,7 +31,7 @@ def _resolve_seed_organizer_id() -> str:
 def seed_finalized_meetings() -> None:
     """Create deterministic finalized sample meetings for dashboard calendar verification."""
     organizer_id = _resolve_seed_organizer_id()
-    now = datetime.utcnow()
+    now = datetime.now()
 
     templates = [
         {
