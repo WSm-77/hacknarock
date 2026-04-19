@@ -9,6 +9,9 @@ from src.database.meeting_states import MeetingStatus
 from ...database.models import MeetingORM, ParticipantVoteORM
 from ...model.meetings_models import TimeBlock
 from ..models import (
+    ConfirmMeetingResponseDTO,
+    CreateMeetingRequestDTO,
+    CreateMeetingResponseDTO,
     DashboardCalendarMeetingDTO,
     DashboardMeetingDTO,
     DashboardPollDTO,
@@ -236,6 +239,56 @@ class IntegrationDatabaseRepository:
             option_id=option_id,
             option_votes=option_votes,
             total_votes=total_votes,
+        )
+
+    def confirm_meeting(self, meeting_id: UUID) -> ConfirmMeetingResponseDTO:
+        meeting = self._db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if meeting is None:
+            raise KeyError("meeting_not_found")
+
+        if meeting.status == MeetingStatus.FINALIZED.value:
+            return ConfirmMeetingResponseDTO(
+                meeting_id=UUID(meeting.id),
+                status=MeetingStatus.FINALIZED.value,
+                message="Meeting already finalized.",
+            )
+
+        if meeting.status != MeetingStatus.WAITING_FOR_CONFIRMATION.value:
+            raise ValueError("meeting_not_confirmable")
+
+        meeting.status = MeetingStatus.FINALIZED.value
+        self._db.commit()
+        self._db.refresh(meeting)
+
+        return ConfirmMeetingResponseDTO(
+            meeting_id=UUID(meeting.id),
+            status=MeetingStatus.FINALIZED.value,
+            message="Meeting finalized.",
+        )
+
+    def confirm_meeting(self, meeting_id: UUID) -> ConfirmMeetingResponseDTO:
+        meeting = self._db.query(MeetingORM).filter(MeetingORM.id == str(meeting_id)).first()
+        if meeting is None:
+            raise KeyError("meeting_not_found")
+
+        if meeting.status == MeetingStatus.FINALIZED.value:
+            return ConfirmMeetingResponseDTO(
+                meeting_id=UUID(meeting.id),
+                status=MeetingStatus.FINALIZED.value,
+                message="Meeting already finalized.",
+            )
+
+        if meeting.status != MeetingStatus.WAITING_FOR_CONFIRMATION.value:
+            raise ValueError("meeting_not_confirmable")
+
+        meeting.status = MeetingStatus.FINALIZED.value
+        self._db.commit()
+        self._db.refresh(meeting)
+
+        return ConfirmMeetingResponseDTO(
+            meeting_id=UUID(meeting.id),
+            status=MeetingStatus.FINALIZED.value,
+            message="Meeting finalized.",
         )
 
     def get_dashboard(self) -> DashboardResponseDTO:

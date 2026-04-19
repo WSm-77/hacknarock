@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { fetchMeetingDetails, type MeetingDetailsResponse, type MeetingTimeBlock } from '../api/integration';
+import {
+  confirmMeetingFinalize,
+  fetchMeetingDetails,
+  type MeetingDetailsResponse,
+  type MeetingTimeBlock,
+} from '../api/integration';
 import '../styles/meeting-confirmation.css';
 
 type Venue = {
@@ -106,7 +111,42 @@ export function MeetingConfirmation() {
   const navigate = useNavigate();
   const [details, setDetails] = useState<MeetingDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleConfirmFinalize(): Promise<void> {
+    if (!meetingId || isSubmitting) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSuccessMessage(null);
+      setErrorMessage(null);
+
+      const response = await confirmMeetingFinalize(meetingId);
+      setDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          status: response.status,
+        };
+      });
+      setSuccessMessage(response.message || 'Meeting has been finalized.');
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMessage(error.detail);
+      } else {
+        setErrorMessage('Failed to confirm and finalize this meeting.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     let isCancelled = false;
@@ -229,11 +269,29 @@ export function MeetingConfirmation() {
             <p>
               Status: <strong>{details ? formatMeetingStatus(details.status) : 'Loading status'}</strong>
             </p>
+            {successMessage ? (
+              <p className="mc-feedback mc-feedback-success" role="status" aria-live="polite">
+                {successMessage}
+              </p>
+            ) : null}
+            {errorMessage && details ? (
+              <p className="mc-feedback mc-feedback-error" role="alert">
+                {errorMessage}
+              </p>
+            ) : null}
             <h2>{recommendedWindow}</h2>
             <p className="mc-meta-line">{participantSummary}</p>
             <div className="mc-hero-actions">
-              <button className="mc-primary-btn" type="button">
-                Confirm and Finalize
+              <button
+                className="mc-primary-btn"
+                type="button"
+                onClick={() => {
+                  void handleConfirmFinalize();
+                }}
+                disabled={isSubmitting || isLoading || !details}
+                aria-busy={isSubmitting}
+              >
+                {isSubmitting ? 'Finalizing...' : 'Confirm and Finalize'}
               </button>
               <button className="mc-secondary-btn" type="button">
                 Propose Alternative

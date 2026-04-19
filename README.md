@@ -24,8 +24,16 @@ Key API endpoints currently used by the frontend:
 |---|---|---|---|
 | `/api/dashboard` | `GET` | `/` (`Dashboard`) | Fetch dashboard counters and recent meetings |
 | `/api/meetings` | `POST` | `/create` (`MeetingCreationWizard`) | Create a meeting and voting poll |
+| `/api/meetings/{meeting_id}/confirm` | `POST` | `/confirm/:meetingId` (`MeetingConfirmation`) | Finalize a meeting from `waiting_for_confirmation` |
 | `/api/polls/{poll_id}` | `GET` | `/vote/:pollId` (`ParticipationPage`) | Load poll details and options |
 | `/api/polls/{poll_id}/votes` | `POST` | `/vote/:pollId` (`ParticipationPage`) | Submit a vote |
+
+Finalize flow notes:
+
+- UI action: the `Confirm and Finalize` button on `MeetingConfirmation` triggers `POST /api/meetings/{meeting_id}/confirm`.
+- Transition: `waiting_for_confirmation` -> `finalized`.
+- Idempotent behavior: if a meeting is already `finalized`, confirming again returns success without changing state.
+- Errors: `404 Not Found` when meeting does not exist; `409 Conflict` when the meeting cannot transition from its current state.
 
 Authentication endpoints are used by the logging page (`/login` and `/logging`):
 

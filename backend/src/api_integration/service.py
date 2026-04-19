@@ -2,7 +2,14 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from .models import DashboardResponseDTO, PollResponseDTO, VoteResponseDTO
+from .models import (
+    ConfirmMeetingResponseDTO,
+    CreateMeetingRequestDTO,
+    CreateMeetingResponseDTO,
+    DashboardResponseDTO,
+    PollResponseDTO,
+    VoteResponseDTO,
+)
 from .repositories.database_repository import IntegrationDatabaseRepository
 
 
@@ -34,6 +41,9 @@ class IntegrationService:
 
     def submit_vote(self, db: Session, poll_id: UUID, option_id: str, voter_id: str) -> VoteResponseDTO:
         return self._repository(db).submit_vote(poll_id=poll_id, option_id=option_id, voter_id=voter_id)
+
+    def confirm_meeting(self, db: Session, meeting_id: UUID) -> ConfirmMeetingResponseDTO:
+        return self._repository(db).confirm_meeting(meeting_id=meeting_id)
 
 
 integration_service = IntegrationService()

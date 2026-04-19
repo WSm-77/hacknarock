@@ -177,6 +177,32 @@
   color: #fff;
 }
 
+.meeting-confirmation-page .mc-primary-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.meeting-confirmation-page .mc-feedback {
+  margin: 12px auto 0;
+  max-width: 560px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.meeting-confirmation-page .mc-feedback-success {
+  color: #235238;
+  background: #eaf6ee;
+  border-color: #b4dcbf;
+}
+
+.meeting-confirmation-page .mc-feedback-error {
+  color: #7f2d2d;
+  background: #fbecec;
+  border-color: #efc2c2;
+}
+
 .meeting-confirmation-page .mc-secondary-btn {
   background: #e2e0d1;
   color: #464137;

@@ -7,6 +7,9 @@ from ..auth.dependencies import get_current_user
 from ..database.models import UserORM
 from ..database.session import get_db
 from .models import (
+    ConfirmMeetingResponseDTO,
+    CreateMeetingRequestDTO,
+    CreateMeetingResponseDTO,
     DashboardResponseDTO,
     PollResponseDTO,
     VoteRequestDTO,
@@ -32,6 +35,23 @@ def get_dashboard(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
+        ) from exc
+
+
+@router.post("/meetings/{meeting_id}/confirm", response_model=ConfirmMeetingResponseDTO)
+def confirm_meeting(meeting_id: UUID, db: Session = Depends(get_db)) -> ConfirmMeetingResponseDTO:
+    """Finalize a meeting once voting has moved it to confirmation stage."""
+    try:
+        return integration_service.confirm_meeting(db=db, meeting_id=meeting_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meeting not found",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Meeting cannot be finalized from current status",
         ) from exc
 
 

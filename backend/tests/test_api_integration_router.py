@@ -257,6 +257,55 @@ def test_votes_transition_status_to_waiting_for_confirmation_after_third_distinc
     assert polls_by_meeting[meeting_id]["status"] == "waiting_for_confirmation"
 
 
+def test_confirm_meeting_transitions_waiting_for_confirmation_to_finalized(integration_client) -> None:
+    client, session_local = integration_client
+
+    created = client.post("/api/meetings", json={"title": "Finalize me"})
+    assert created.status_code == 201
+    meeting_id = created.json()["meeting_id"]
+
+    _set_status(session_local, meeting_id, "waiting_for_confirmation")
+
+    response = client.post(f"/api/meetings/{meeting_id}/confirm")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meeting_id"] == meeting_id
+    assert payload["status"] == "finalized"
+
+    with session_local() as db:
+        meeting = db.query(MeetingORM).filter(MeetingORM.id == meeting_id).first()
+        assert meeting is not None
+        assert meeting.status == "finalized"
+
+
+def test_confirm_meeting_is_idempotent_when_already_finalized(integration_client) -> None:
+    client, session_local = integration_client
+
+    created = client.post("/api/meetings", json={"title": "Already finalized"})
+    assert created.status_code == 201
+    meeting_id = created.json()["meeting_id"]
+
+    _set_status(session_local, meeting_id, "finalized")
+
+    response = client.post(f"/api/meetings/{meeting_id}/confirm")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meeting_id"] == meeting_id
+    assert payload["status"] == "finalized"
+    assert payload["message"] == "Meeting already finalized."
+
+
+def test_confirm_meeting_returns_404_for_missing_meeting(integration_client) -> None:
+    client, _ = integration_client
+
+    response = client.post(f"/api/meetings/{uuid4()}/confirm")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Meeting not found"
+
+
 def test_poll_not_found_returns_404(integration_client):
     client, _ = integration_client
     token = _register_and_login(client, "poll.not.found@example.com", "secret123")
