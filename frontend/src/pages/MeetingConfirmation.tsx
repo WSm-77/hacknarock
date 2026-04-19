@@ -116,7 +116,6 @@ export function MeetingConfirmation() {
             <span>3 refined options selected</span>
           </div>
 
-          <div className="mc-venues-layout">
             <div className="mc-venues-grid">
               {venues.map((venue) => (
                 <article className="mc-venue-card" key={venue.name}>
@@ -132,15 +131,6 @@ export function MeetingConfirmation() {
                 </article>
               ))}
             </div>
-
-            <aside className="mc-map-panel" aria-label="Map view">
-              <img
-                alt="Stylized map"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsHiDVL0kqDnZXw4vxV7jUo-ZmmUgYQ3ufhems9AWbyHM1hq1CgTn-OgNdjnhatO1oQqvPJiSqENn49z6PA7q_q7fq1-CcQD_9b4_-P4I1Dog5qOHmK9v9xTSAdRcJzcJnhv5ShSNnXQnkWRQIRGxY6Wg_DPmNqoOaH9SQz2yuyfWvBJ9mfgsHJdQ3SVzNPmcVp2uloW6zHT_nQ6U2Gdf-NJdIMP--NwjV-Qx54uH4--8qIzVIsqP5WABuNet5DU6VFvUpShZD2TSv"
-              />
-              <p>Proximity analysis: 1.2 miles from Central Station</p>
-            </aside>
-          </div>
         </section>
 
         <section className="mc-agenda">
